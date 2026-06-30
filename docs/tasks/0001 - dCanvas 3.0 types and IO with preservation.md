@@ -90,7 +90,7 @@ The dCanvas 3.0 format as a self-contained Go package with typed fields and roun
 - Typed model for the JSON Canvas core (Layer 0) plus the dialogue vocabulary (Layer 1) on `Canvas`, `Node`, `Edge`, and `Character`. Node Layer 1: `x-id`, `x-kind` (`line`/`reply`), `x-role` (free string), `x-textId`, `x-condition`, `x-action`, `x-sound`, `x-character`. Edge Layer 1: `x-id`, `x-kind` (`normal`/`loop`), `x-role` (free string), `x-condition`, `x-textId`. All `x-` fields optional.
 - `Encode` always stamps `x-dCanvasVersion: "3.0"`.
 - `Decode` validates the **major** version and returns an error on mismatch (a 2.0 file is rejected); no migration.
-- **Field preservation** via the catch-all mechanism (ADR-0005, not struct embedding): decode into a raw map, populate typed known fields, retain unrecognised keys in a catch-all; on encode, merge typed fields with the preserved map. This applies at the top level, node, and edge. (Recursion into nested known objects is task 0002.)
+- **Field preservation** via the catch-all mechanism ([[ADR-0005 - Reference impl uses catch-all over typed fields|ADR-0005]], not struct embedding): decode into a raw map, populate typed known fields, retain unrecognised keys in a catch-all; on encode, merge typed fields with the preserved map. This applies at the top level, node, and edge. (Recursion into nested known objects is task 0002.)
 - The package depends on nothing from the Infinity domain (one-way dependency: project → library).
 
 This replaces the existing dCanvas 2.0 types and IO in the package.

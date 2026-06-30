@@ -103,7 +103,7 @@
         "color": { "$ref": "#/definitions/canvasColor" },
         "label": { "type": "string", "description": "Player-facing choice text — what the player sees and picks." },
         "x-id": { "type": "string", "description": "Engine/domain identifier of this edge." },
-        "x-kind": { "type": "string", "enum": ["normal", "loop"], "description": "Closed rendering hint. loop marks a back-edge (a cycle). Rendering only; layout does not exclude loops." },
+        "x-kind": { "type": "string", "enum": ["normal", "loop"], "description": "Closed rendering hint. loop marks a back-edge (a cycle); normal a forward transition. May be rendered differently (e.g. loop dashed)." },
         "x-role": { "type": "string", "description": "Open, project-defined label." },
         "x-condition": { "type": "string", "description": "Engine condition expression that gates this transition." },
         "x-textId": { "type": "string", "description": "String-table reference for label, when present." }

@@ -1,6 +1,6 @@
 ---
-adr-status: Accepted
-superseded-by:
+adr-status: Superseded
+superseded-by: "[[ADR-0009 - Layout may read x-kind and the loop strategy is configurable]]"
 ---
 
 # Graph layout (autog) belongs to the dCanvas library

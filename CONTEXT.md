@@ -28,7 +28,7 @@ The format problem that triggered the 3.0 redesign: the old format baked engine-
 - **Reply** (`x-kind: "reply"`) — the player's *own* utterance. **A reply is always a node.**
 - **Choice** — what the player *sees and picks* from a menu. It rides on the **edge `label`**, not on a node. A choice is either a shortened paraphrase of the target reply, or coincides with it.
   - Consequence: "is the player choice a node or an edge?" has no single answer across projects. The *reply* is always a node; the *choice* is edge text. This is why text placement is split between `node.text` and `edge.label`.
-- **`x-kind`** — a **closed** vocabulary, understood by every tool, used purely as a **rendering hint**. Nodes: `line` / `reply`. Edges: `normal` / `loop`. Nothing mechanical depends on it (e.g. layout does not exclude `loop` edges — the layout engine resolves cycles itself).
+- **`x-kind`** — a **closed** vocabulary, understood by every tool. Nodes: `line` / `reply` (rendering hints only). Edges: `normal` / `loop`. `loop` is largely a rendering hint, but layout also reads it: by default the library **excludes `loop` (back-)edges from positioning** so a cyclic dialogue still lays out as a clean top-down tree (configurable — see [[ADR-0009 - Layout may read x-kind and the loop strategy is configurable|ADR-0009]]).
 - **`x-role`** — an **open** free-string label, defined per project (e.g. `state`, `transition`, `paraphrase`). Generic tools ignore it; a viewer may map `role → style`.
 - **Canvas id vs domain id** — two distinct identifiers:
   - `id` — unique *within the file*; edges reference it. The "canvas" id.
@@ -47,5 +47,5 @@ The format problem that triggered the 3.0 redesign: the old format baked engine-
 ## Status & roadmap
 
 - **dCanvas 2.0 is deprecated.** 3.0 is a clean redesign; no migration code.
-- The format and its Go **reference implementation** will move to a **separate repository** when a second consumer exists to validate it (see `adr/ADR-0008`).
+- The format and its Go **reference implementation** will move to a **separate repository** when a second consumer exists to validate it (see [[ADR-0008 - Extract format and library to a separate repository|ADR-0008]]).
 - This `sbt-infinity` tool still emits 2.0 today; porting it to 3.0 (the natural acceptance test of the format) is planned but not yet done. Until then this `dcanvas/` package and its docs are the staging area.

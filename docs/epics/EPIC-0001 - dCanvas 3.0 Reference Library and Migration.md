@@ -95,7 +95,7 @@ We need a **reference implementation** of dCanvas 3.0 — a clean, dialogue-only
 
 # Solution
 
-Build the dCanvas 3.0 reference library as a self-contained package (staged inside `dcanvas/` so it can later be lifted into its own repository per ADR-0008), then port `sbt-infinity`'s dialogue export onto it as the format's acceptance test.
+Build the dCanvas 3.0 reference library as a self-contained package (staged inside `dcanvas/` so it can later be lifted into its own repository per [[ADR-0008 - Extract format and library to a separate repository|ADR-0008]]), then port `sbt-infinity`'s dialogue export onto it as the format's acceptance test.
 
 The library provides three capabilities, mapped to the three layers of the format:
 
@@ -123,18 +123,18 @@ The library provides three capabilities, mapped to the three layers of the forma
 14. As an `sbt-infinity` maintainer, I want node auto-positioning to come from the library's layout, so that positioning logic is no longer tangled with conversion.
 15. As an `sbt-infinity` maintainer, I want the player's choice text on the edge `label` and the spoken text on the node `text`, so that exported files follow the text-placement rule and render correctly in Obsidian.
 16. As an `sbt-infinity` maintainer, I want each node to carry both a canvas `id` and an engine `x-id`, so that edges reference a stable file-local id while the engine identifier is preserved.
-17. As a maintainer, I want the library structured so it can be lifted into its own repository with minimal change, so that the eventual extraction (ADR-0008) is cheap.
+17. As a maintainer, I want the library structured so it can be lifted into its own repository with minimal change, so that the eventual extraction ([[ADR-0008 - Extract format and library to a separate repository|ADR-0008]]) is cheap.
 18. As a maintainer, I want a dialogue graph with cycles to lay out without crashing, so that looping conversations are positioned rather than falling back to default coordinates.
 19. As a maintainer, I want laid-out nodes to not overlap, so that the exported canvas is readable.
 20. As a maintainer, I want the library to have no dependency on the Infinity domain packages, so that the dependency direction is one-way (project → library).
 
 # Implementation Decisions
 
-- **Package shape.** The dCanvas 3.0 reference library is a self-contained package with no dependency on `dialog`, `parser`, or other Infinity domain code (dependency direction is project → library only). It is staged inside `dcanvas/` and structured for later extraction to a standalone repository (ADR-0008).
+- **Package shape.** The dCanvas 3.0 reference library is a self-contained package with no dependency on `dialog`, `parser`, or other Infinity domain code (dependency direction is project → library only). It is staged inside `dcanvas/` and structured for later extraction to a standalone repository ([[ADR-0008 - Extract format and library to a separate repository|ADR-0008]]).
 - **Format types.** Model Layer 0 (JSON Canvas core) and Layer 1 (dialogue vocabulary) as typed fields. Node Layer 1: `x-id`, `x-kind` (`line`/`reply`), `x-role` (free string), `x-textId`, `x-condition`, `x-action`, `x-sound`, `x-character`. Edge Layer 1: `x-id`, `x-kind` (`normal`/`loop`), `x-role` (free string), `x-condition`, `x-textId`. All `x-` fields optional.
-- **Preservation mechanism.** Per ADR-0005, do **not** use struct embedding. Decode into a raw map, populate typed known fields, retain unknown keys in a catch-all; on encode, merge typed fields with the preserved map. Preservation is recursive for known nested objects (currently only `x-character`).
+- **Preservation mechanism.** Per [[ADR-0005 - Reference impl uses catch-all over typed fields|ADR-0005]], do **not** use struct embedding. Decode into a raw map, populate typed known fields, retain unknown keys in a catch-all; on encode, merge typed fields with the preserved map. Preservation is recursive for known nested objects (currently only `x-character`).
 - **Version handling.** `Decode` validates the major version of `x-dCanvasVersion` and errors on mismatch (a 2.0 file is rejected). `Encode` always stamps `"3.0"`. No 2.0 migration code (2.0 is deprecated).
-- **Layout.** Per ADR-0006, expose a generic layout operation over a canvas that reads/writes only Layer 0 geometry (`width`/`height` → `x`/`y`) and is driven by edges. It uses `autog`, wraps the call in panic recovery (degrading to default positions on failure), and does **not** exclude `loop` edges — the layout engine resolves cycles itself.
+- **Layout.** Per ~~[[ADR-0006 - Layout belongs to the dCanvas library|ADR-0006]]~~ [[ADR-0009 - Layout may read x-kind and the loop strategy is configurable|ADR-0009]], expose a generic layout operation over a canvas (`width`/`height` → `x`/`y`) driven by edges. It uses `autog`, wraps the call in panic recovery (degrading to default positions on failure). ~~It reads/writes only Layer 0 geometry, and does **not** exclude `loop` edges — the layout engine resolves cycles itself.~~ By default it **excludes** `x-kind: loop` edges from positioning (reading Layer 1) so cyclic dialogues lay out as a clean tree; configurable via `WithLoopStrategy` (default `LoopCut`).
 - **Constructor.** Provide a `Canvas` constructor that stamps the format version and initialises non-nil node/edge slices (the one real invariant worth a constructor). Nodes/edges/character are plain typed values, built via literals.
 - **`sbt-infinity` port.** The `dialog` package keeps `ToDCanvas` and its `newNode`/`newEdge`/`newCharacter` helpers, but: builds 3.0 nodes/edges; maps NPC line → `x-kind: line`, player reply → `x-kind: reply`; sets the engine-specific term in `x-role`; puts journal fields as Layer 2 `x-` fields; sets canvas `id` and `x-id` distinctly; puts player-facing choice text on edge `label` and spoken text on `node.text`; and delegates positioning to the library's layout instead of calling `autog` inline.
 - **CLI.** `dialog ex` behaviour is unchanged from the user's perspective except that output is dCanvas 3.0.
@@ -143,7 +143,7 @@ The library provides three capabilities, mapped to the three layers of the forma
 
 - **What makes a good test here:** assert externally observable format behaviour — bytes in, bytes out, and the structure of the decoded canvas — never the internal catch-all representation. Prefer table-driven Go tests, matching the style already in `dcanvas_test.go`.
 - **IO / round-trip seam (`Decode`/`Encode`, the highest and existing seam):**
-  - Round-trip preserves an unknown top-level field, an unknown node `x-` field, an unknown edge `x-` field, and an unknown key inside `x-character` (recursive preservation, the core guarantee — ADR-0003).
+  - Round-trip preserves an unknown top-level field, an unknown node `x-` field, an unknown edge `x-` field, and an unknown key inside `x-character` (recursive preservation, the core guarantee — [[ADR-0003 - Mandatory recursive preservation of unknown fields|ADR-0003]]).
   - Typed Layer 1 fields decode and re-encode faithfully.
   - Decoding a document whose major version ≠ 3 returns an error; decoding a `"3.0"` document succeeds.
   - A stripped document (all `x-` removed) is still valid JSON Canvas (encode produces no `x-` for an empty Layer 1).
@@ -157,9 +157,9 @@ The library provides three capabilities, mapped to the three layers of the forma
 
 # Out of Scope
 
-- Creating the standalone repository and actually moving the code out of `sbt-infinity` — deferred until a second consumer exists (ADR-0008). This epic only structures the code for that move.
+- Creating the standalone repository and actually moving the code out of `sbt-infinity` — deferred until a second consumer exists ([[ADR-0008 - Extract format and library to a separate repository|ADR-0008]]). This epic only structures the code for that move.
 - Any dCanvas 2.0 → 3.0 migration tooling (2.0 is deprecated).
-- First-class `group`-node support / sub-dialogue clustering (ADR-0007 keeps it opaque for now).
+- First-class `group`-node support / sub-dialogue clustering ([[ADR-0007 - Dialogue semantics only on text nodes|ADR-0007]] keeps it opaque for now).
 - Building or reworking the dialogue **viewer** (a separate effort; the format is designed to enable a flexible viewer, but the viewer itself is not part of this epic).
 - Changing the dialogue domain model, DLG parsing, or any non-dialogue command.
 

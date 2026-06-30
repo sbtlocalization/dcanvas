@@ -22,9 +22,10 @@
 package dcanvas
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"maps"
+	"sort"
 )
 
 // Version is the format version this package reads and writes. Encode always
@@ -109,22 +110,96 @@ type Edge struct {
 }
 
 // Character holds speaker information for a dialogue node. It is an open object
-// in the spec; recursive preservation of unknown keys is handled in a later
-// step, so for now only the known fields are modelled.
+// in the spec: known fields are modelled as typed members, and any other key
+// is preserved verbatim on a round-trip via the same catch-all pattern used by
+// Node and Edge. This makes recursive preservation reusable for any future
+// known nested object, not specific to x-character.
 type Character struct {
-	Name     string `json:"name"`
-	Portrait string `json:"portrait,omitempty"`
-	Gender   string `json:"gender,omitempty"`
+	Name     string // required
+	Portrait string // optional
+	Gender   string // optional
+
+	// extra holds unrecognised character fields, preserved verbatim.
+	extra map[string]json.RawMessage
 }
 
 // --- preservation helpers ---------------------------------------------------
 
-// cloneExtra returns a fresh map seeded with the preserved unknown fields, with
-// spare capacity for the known fields a marshaller is about to add.
-func cloneExtra(extra map[string]json.RawMessage) map[string]json.RawMessage {
-	out := make(map[string]json.RawMessage, len(extra)+16)
-	maps.Copy(out, extra)
-	return out
+// objectWriter builds a JSON object that emits known fields in a fixed,
+// human-friendly order (rather than the alphabetical order json.Marshal gives a
+// map), then appends any preserved unknown fields. This keeps round-trip
+// preservation while producing readable, JSON-Canvas-conventional output.
+type objectWriter struct {
+	fields []field
+}
+
+type field struct {
+	key string
+	val json.RawMessage
+}
+
+// always marshals a value and always emits it (used for required fields).
+func (w *objectWriter) always(key string, val any) error {
+	b, err := json.Marshal(val)
+	if err != nil {
+		return fmt.Errorf("dcanvas: field %q: %w", key, err)
+	}
+	w.fields = append(w.fields, field{key, b})
+	return nil
+}
+
+// str emits a string field only when it is non-empty (omitempty).
+func (w *objectWriter) str(key, val string) {
+	if val == "" {
+		return
+	}
+	b, _ := json.Marshal(val) // marshalling a string never fails
+	w.fields = append(w.fields, field{key, b})
+}
+
+// kind validates a closed x-kind value and emits it when non-empty.
+func (w *objectWriter) kind(val, a, b, owner string) error {
+	if val == "" {
+		return nil
+	}
+	if val != a && val != b {
+		return fmt.Errorf("dcanvas: invalid %s x-kind %q (want %q or %q)", owner, val, a, b)
+	}
+	w.str("x-kind", val)
+	return nil
+}
+
+// bytes serialises the ordered known fields followed by the preserved unknown
+// fields (sorted for determinism, since their original order is not retained).
+func (w *objectWriter) bytes(extra map[string]json.RawMessage) []byte {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	first := true
+	emit := func(k string, v json.RawMessage) {
+		if !first {
+			buf.WriteByte(',')
+		}
+		first = false
+		kb, _ := json.Marshal(k)
+		buf.Write(kb)
+		buf.WriteByte(':')
+		buf.Write(v)
+	}
+	for _, f := range w.fields {
+		emit(f.key, f.val)
+	}
+	if len(extra) > 0 {
+		keys := make([]string, 0, len(extra))
+		for k := range extra {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			emit(k, extra[k])
+		}
+	}
+	buf.WriteByte('}')
+	return buf.Bytes()
 }
 
 // popString unmarshals a known string field out of raw and removes its key, so
@@ -150,36 +225,37 @@ func popInt(raw map[string]json.RawMessage, key string, dst *int) error {
 	return nil
 }
 
-// putAlways marshals a value and always stores it (used for required fields).
-func putAlways(m map[string]json.RawMessage, key string, val any) error {
-	b, err := json.Marshal(val)
-	if err != nil {
-		return fmt.Errorf("dcanvas: field %q: %w", key, err)
+// --- Character IO -----------------------------------------------------------
+
+// UnmarshalJSON decodes a character, keeping any unrecognised field in a
+// catch-all so nested unknown keys survive a round-trip.
+func (ch *Character) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
 	}
-	m[key] = b
+	for key, dst := range map[string]*string{
+		"name":     &ch.Name,
+		"portrait": &ch.Portrait,
+		"gender":   &ch.Gender,
+	} {
+		if err := popString(raw, key, dst); err != nil {
+			return err
+		}
+	}
+	ch.extra = raw
 	return nil
 }
 
-// putString stores a string field only when it is non-empty (omitempty).
-func putString(m map[string]json.RawMessage, key, val string) {
-	if val == "" {
-		return
+// MarshalJSON encodes a character, merging back any preserved unknown fields.
+func (ch *Character) MarshalJSON() ([]byte, error) {
+	var w objectWriter
+	if err := w.always("name", ch.Name); err != nil {
+		return nil, err
 	}
-	b, _ := json.Marshal(val) // marshalling a string never fails
-	m[key] = b
-}
-
-// putKind validates a closed x-kind value and stores it when non-empty.
-func putKind(m map[string]json.RawMessage, val, a, b, owner string) error {
-	if val == "" {
-		return nil
-	}
-	if val != a && val != b {
-		return fmt.Errorf("dcanvas: invalid %s x-kind %q (want %q or %q)", owner, val, a, b)
-	}
-	enc, _ := json.Marshal(val)
-	m["x-kind"] = enc
-	return nil
+	w.str("portrait", ch.Portrait)
+	w.str("gender", ch.Gender)
+	return w.bytes(ch.extra), nil
 }
 
 // --- Canvas IO --------------------------------------------------------------
@@ -213,24 +289,24 @@ func (c *Canvas) UnmarshalJSON(data []byte) error {
 // merging back any preserved unknown top-level fields. nodes and edges are
 // always emitted as arrays so the result is a clean JSON Canvas document.
 func (c *Canvas) MarshalJSON() ([]byte, error) {
-	out := cloneExtra(c.extra)
-	out["x-dCanvasVersion"], _ = json.Marshal(Version)
+	var w objectWriter
+	w.str("x-dCanvasVersion", Version)
 
 	nodes := c.Nodes
 	if nodes == nil {
 		nodes = []*Node{}
 	}
-	if err := putAlways(out, "nodes", nodes); err != nil {
+	if err := w.always("nodes", nodes); err != nil {
 		return nil, err
 	}
 	edges := c.Edges
 	if edges == nil {
 		edges = []*Edge{}
 	}
-	if err := putAlways(out, "edges", edges); err != nil {
+	if err := w.always("edges", edges); err != nil {
 		return nil, err
 	}
-	return json.Marshal(out)
+	return w.bytes(c.extra), nil
 }
 
 // --- Node IO ----------------------------------------------------------------
@@ -281,34 +357,38 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 // MarshalJSON encodes a node, validating x-kind and merging back any preserved
 // unknown fields.
 func (n *Node) MarshalJSON() ([]byte, error) {
-	out := cloneExtra(n.extra)
+	var w objectWriter
 
-	// Layer 0 — required geometry/identity always emitted.
-	_ = putAlways(out, "id", n.ID)
-	_ = putAlways(out, "type", n.Type)
-	_ = putAlways(out, "x", n.X)
-	_ = putAlways(out, "y", n.Y)
-	_ = putAlways(out, "width", n.Width)
-	_ = putAlways(out, "height", n.Height)
-	putString(out, "color", n.Color)
-	putString(out, "text", n.Text)
-
-	// Layer 1 — optional dialogue vocabulary.
-	putString(out, "x-id", n.XID)
-	if err := putKind(out, n.Kind, KindLine, KindReply, "node"); err != nil {
+	// Layer 0 — required geometry/identity always emitted, in canvas order.
+	if err := w.always("id", n.ID); err != nil {
 		return nil, err
 	}
-	putString(out, "x-role", n.Role)
-	putString(out, "x-textId", n.TextID)
-	putString(out, "x-condition", n.Condition)
-	putString(out, "x-action", n.Action)
-	putString(out, "x-sound", n.Sound)
+	if err := w.always("type", n.Type); err != nil {
+		return nil, err
+	}
+	_ = w.always("x", n.X)
+	_ = w.always("y", n.Y)
+	_ = w.always("width", n.Width)
+	_ = w.always("height", n.Height)
+	w.str("color", n.Color)
+	w.str("text", n.Text)
+
+	// Layer 1 — optional dialogue vocabulary.
+	w.str("x-id", n.XID)
+	if err := w.kind(n.Kind, KindLine, KindReply, "node"); err != nil {
+		return nil, err
+	}
+	w.str("x-role", n.Role)
+	w.str("x-textId", n.TextID)
+	w.str("x-condition", n.Condition)
+	w.str("x-action", n.Action)
+	w.str("x-sound", n.Sound)
 	if n.Character != nil {
-		if err := putAlways(out, "x-character", n.Character); err != nil {
+		if err := w.always("x-character", n.Character); err != nil {
 			return nil, err
 		}
 	}
-	return json.Marshal(out)
+	return w.bytes(n.extra), nil
 }
 
 // --- Edge IO ----------------------------------------------------------------
@@ -346,28 +426,34 @@ func (e *Edge) UnmarshalJSON(data []byte) error {
 // MarshalJSON encodes an edge, validating x-kind and merging back any preserved
 // unknown fields.
 func (e *Edge) MarshalJSON() ([]byte, error) {
-	out := cloneExtra(e.extra)
+	var w objectWriter
 
-	// Layer 0 — required identity/endpoints always emitted.
-	_ = putAlways(out, "id", e.ID)
-	_ = putAlways(out, "fromNode", e.FromNode)
-	_ = putAlways(out, "toNode", e.ToNode)
-	putString(out, "fromSide", e.FromSide)
-	putString(out, "fromEnd", e.FromEnd)
-	putString(out, "toSide", e.ToSide)
-	putString(out, "toEnd", e.ToEnd)
-	putString(out, "color", e.Color)
-	putString(out, "label", e.Label)
-
-	// Layer 1 — optional dialogue vocabulary.
-	putString(out, "x-id", e.XID)
-	if err := putKind(out, e.Kind, KindNormal, KindLoop, "edge"); err != nil {
+	// Layer 0 — required identity/endpoints first, then optional geometry.
+	if err := w.always("id", e.ID); err != nil {
 		return nil, err
 	}
-	putString(out, "x-role", e.Role)
-	putString(out, "x-condition", e.Condition)
-	putString(out, "x-textId", e.TextID)
-	return json.Marshal(out)
+	if err := w.always("fromNode", e.FromNode); err != nil {
+		return nil, err
+	}
+	w.str("fromSide", e.FromSide)
+	w.str("fromEnd", e.FromEnd)
+	if err := w.always("toNode", e.ToNode); err != nil {
+		return nil, err
+	}
+	w.str("toSide", e.ToSide)
+	w.str("toEnd", e.ToEnd)
+	w.str("color", e.Color)
+	w.str("label", e.Label)
+
+	// Layer 1 — optional dialogue vocabulary.
+	w.str("x-id", e.XID)
+	if err := w.kind(e.Kind, KindNormal, KindLoop, "edge"); err != nil {
+		return nil, err
+	}
+	w.str("x-role", e.Role)
+	w.str("x-condition", e.Condition)
+	w.str("x-textId", e.TextID)
+	return w.bytes(e.extra), nil
 }
 
 // HasOverlappingNodes reports whether any two nodes in the canvas have

@@ -4,13 +4,13 @@
 
 ## Overview
 
-dCanvas 3.0 is a **dialogue** graph format. It is a **strict superset of [JSON Canvas 1.0](https://jsoncanvas.org/)**: all dialogue metadata lives in `x-` prefixed extension fields. Stripping every `x-` field from a dCanvas 3.0 file produces a valid JSON Canvas 1.0 document that opens unchanged in any JSON Canvas editor (e.g. Obsidian Canvas).
+dCanvas 3.0 is a **dialogue** graph format. It is a **strict superset of [JSON Canvas 1.0](https://jsoncanvas.org/)**: all dialogue metadata lives in `x-` prefixed extension fields. Stripping every `x-` field from a dCanvas 3.0 file produces a valid JSON Canvas 1.0 document.
 
 dCanvas is **dialogue-only by design** — it describes who says what and how the conversation branches. It is not a general-purpose diagram format.
 
 ### Design principles
 
-1. **JSON Canvas first** — the visible text always lives in the standard fields a JSON Canvas editor understands: a node's `text` and an edge's `label`. No metadata is ever encoded inside `text`.
+1. **JSON Canvas first** — the visible text always lives in the standard JSON Canvas fields: a node's `text` and an edge's `label`. No metadata is ever encoded inside `text`.
 2. **Three layers of meaning** — every field belongs to exactly one layer:
    - **Layer 0 — JSON Canvas** (`id`, `type`, `x`, `y`, `width`, `height`, `color`, `text`, edge `label`, …): the universal base.
    - **Layer 1 — dialogue vocabulary** (the `x-` fields defined in this spec): the shared language of any dialogue project.
@@ -42,13 +42,13 @@ The value is `major.minor`. The **major** version governs compatibility:
 
 If the field is absent, the file is plain JSON Canvas 1.0 and carries no dialogue semantics.
 
-> **dCanvas 2.0 is deprecated.** There is no migration path in the reference tooling; 3.0 is a clean redesign. A 3.0 reader rejects a 2.0 file on the major-version check.
+> **dCanvas 2.0 is deprecated.** There is no migration path; 3.0 is a clean redesign. A 3.0 reader rejects a 2.0 file on the major-version check.
 
 ## Field preservation
 
 > **A conforming implementation MUST preserve, on round-trip (read → write), every field it does not recognise — at any depth of nesting.**
 
-This is what makes dCanvas extensible rather than merely having a fixed set of extensions. It mirrors how JSON Canvas editors (Obsidian) already treat unknown properties: they leave them untouched. Concretely:
+This is what makes dCanvas extensible rather than merely having a fixed set of extensions. Concretely:
 
 - Unknown top-level, node, and edge fields are preserved (both unknown `x-` fields and any unknown standard-looking field).
 - Preservation is **recursive**: unknown keys inside known objects (e.g. inside `x-character`) are preserved too.
@@ -94,8 +94,8 @@ All optional and `x-` prefixed. A `text` node that carries `x-kind` is a dialogu
 | Field | Type | Description |
 |---|---|---|
 | `x-id` | string | **Engine/domain** identifier of this node (e.g. `"ABELA[5]"`). Distinct from the canvas `id`. |
-| `x-kind` | `"line"` \| `"reply"` | **Closed, rendering hint.** `line` = an utterance spoken *to* the player (NPC, narrator, object). `reply` = the player's own utterance. Every dCanvas tool understands these two values; nothing in the *mechanics* (e.g. layout) depends on it. |
-| `x-role` | string | **Open, project-defined** semantic label (e.g. `"state"`, `"transition"`, `"paraphrase"`). Generic tools need not understand it; a viewer may map `role → style` per project. |
+| `x-kind` | `"line"` \| `"reply"` | **Closed, rendering hint.** `line` = an utterance spoken *to* the player (NPC, narrator, object). `reply` = the player's own utterance. Both values are purely presentational. |
+| `x-role` | string | **Open, project-defined** semantic label (e.g. `"state"`, `"transition"`, `"paraphrase"`). Generic tools need not understand it. |
 | `x-textId` | string | String-table reference for `text` (e.g. `"#2687"`) |
 | `x-condition` | string | Engine condition/trigger gating this node |
 | `x-action` | string | Engine action executed when this node is reached |
@@ -137,7 +137,7 @@ Anything else `x-` prefixed. The core spec does not define them; they are valid 
 | Field | Type | Description |
 |---|---|---|
 | `x-id` | string | Engine/domain identifier of this edge |
-| `x-kind` | `"normal"` \| `"loop"` | **Closed, rendering hint.** `loop` marks a back-edge (a cycle in the dialogue). Used purely for rendering (e.g. dashed); layout does **not** exclude loops — the layout engine resolves cycles itself. |
+| `x-kind` | `"normal"` \| `"loop"` | **Closed, rendering hint.** `loop` marks a back-edge (a cycle in the dialogue); `normal` is a forward transition. May be drawn differently (e.g. `loop` dashed). |
 | `x-role` | string | Open, project-defined label |
 | `x-condition` | string | Engine condition expression gating this transition |
 | `x-textId` | string | String-table reference for `label`, when present |
@@ -150,14 +150,14 @@ This is the heart of JSON-Canvas compatibility — the two visible texts ride on
 - **What the player says** (full reply) → the **node** `text` (a `reply` node).
 - **What the player sees and picks** (the choice/paraphrase) → the **edge** `label`.
 
-Because both are standard JSON Canvas fields, Obsidian renders them natively without knowing anything about dialogues.
+Because both are standard JSON Canvas fields, the visible text needs no dialogue-specific interpretation to display.
 
 ## Node types
 
 JSON Canvas defines four node types: `text`, `file`, `link`, `group`.
 
 - Only **`text`** nodes carry dialogue semantics (Layer 1 fields).
-- `group`, `file`, and `link` nodes are **valid, preserved, but opaque** to dialogue logic — they are not laid out as dialogue nodes and carry no `x-kind`/`x-role`. A full-featured viewer **should** still render them as JSON Canvas defines (group boxes, file embeds, link cards).
+- `group`, `file`, and `link` nodes are **valid and preserved** but carry no dialogue semantics (no `x-kind`/`x-role`).
 - `group` is reserved for future clustering of sub-dialogues; it is unused today because one file holds one graph.
 
 ## Color

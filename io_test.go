@@ -220,6 +220,93 @@ func TestRoundTrip_TypedLayer1Faithful(t *testing.T) {
 	}
 }
 
+// objectKeysInOrder reads the keys of the first JSON object found in data, in
+// document order (json.Decoder preserves it, unlike a map). Nested values are
+// skipped so only the immediate object's keys are returned.
+func objectKeysInOrder(t *testing.T, data []byte) []string {
+	t.Helper()
+	dec := json.NewDecoder(bytes.NewReader(data))
+	for { // advance to the first '{'
+		tok, err := dec.Token()
+		if err != nil {
+			t.Fatalf("scanning for object start: %v", err)
+		}
+		if d, ok := tok.(json.Delim); ok && d == '{' {
+			break
+		}
+	}
+	var keys []string
+	for dec.More() {
+		keyTok, err := dec.Token()
+		if err != nil {
+			t.Fatalf("reading key: %v", err)
+		}
+		keys = append(keys, keyTok.(string))
+		if err := skipJSONValue(dec); err != nil {
+			t.Fatalf("skipping value: %v", err)
+		}
+	}
+	return keys
+}
+
+// skipJSONValue consumes exactly one value (scalar or a fully nested
+// object/array) from the decoder.
+func skipJSONValue(dec *json.Decoder) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	d, ok := tok.(json.Delim)
+	if !ok || (d != '{' && d != '[') {
+		return nil // scalar
+	}
+	for depth := 1; depth > 0; {
+		t2, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		if dd, ok := t2.(json.Delim); ok {
+			if dd == '{' || dd == '[' {
+				depth++
+			} else {
+				depth--
+			}
+		}
+	}
+	return nil
+}
+
+func TestEncode_KeyOrder(t *testing.T) {
+	c := &Canvas{
+		Nodes: []*Node{{
+			ID: "n1", Type: "text", X: 1, Y: 2, Width: 400, Height: 300,
+			Color: "3", Text: "hi", XID: "X", Kind: KindLine, Role: "state",
+		}},
+		Edges: []*Edge{{ID: "e1", FromNode: "n1", ToNode: "n1", Label: "go", Kind: KindNormal}},
+	}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	data := buf.Bytes()
+
+	top := objectKeysInOrder(t, data)
+	wantTop := []string{"x-dCanvasVersion", "nodes", "edges"}
+	if strings.Join(top, ",") != strings.Join(wantTop, ",") {
+		t.Errorf("top-level key order = %v, want %v", top, wantTop)
+	}
+
+	// The node object is the first object inside the "nodes" array; find it by
+	// scanning past the top-level keys to the first nested '{'.
+	idx := bytes.IndexByte(data, '{')
+	nodeStart := bytes.IndexByte(data[idx+1:], '{')
+	nodeKeys := objectKeysInOrder(t, data[idx+1+nodeStart:])
+	wantNode := []string{"id", "type", "x", "y", "width", "height", "color", "text", "x-id", "x-kind", "x-role"}
+	if strings.Join(nodeKeys, ",") != strings.Join(wantNode, ",") {
+		t.Errorf("node key order = %v, want %v", nodeKeys, wantNode)
+	}
+}
+
 func TestEncode_RejectsInvalidKind(t *testing.T) {
 	tests := []struct {
 		name   string
