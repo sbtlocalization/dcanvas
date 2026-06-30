@@ -1,0 +1,391 @@
+// SPDX-FileCopyrightText: © 2026 SBT Localization https://sbt.localization.com.ua
+// SPDX-FileContributor: Serhii Olendarenko <sergey.olendarenko@gmail.com>
+//
+// SPDX-License-Identifier: BlueOak-1.0.0
+
+// Package dcanvas provides types and IO for the dCanvas 3.0 format, a strict
+// superset of JSON Canvas 1.0 for dialogue graphs.
+//
+// Every field belongs to exactly one of three layers:
+//
+//   - Layer 0 — the JSON Canvas core (id, type, x, y, width, height, color,
+//     text, edge label, …);
+//   - Layer 1 — the dialogue vocabulary, modelled below as typed x- fields;
+//   - Layer 2 — project-specific x- fields the spec does not know about.
+//
+// The package understands Layers 0 and 1 as typed members. Any other field —
+// at the top level, on a node, or on an edge — is unknown to the package and
+// is preserved verbatim on a read → write round-trip (see ADR-0003 and
+// ADR-0005). The package depends on nothing outside the standard library; the
+// dependency direction is one-way (a project depends on dcanvas, never the
+// reverse).
+package dcanvas
+
+import (
+	"encoding/json"
+	"fmt"
+	"maps"
+)
+
+// Version is the format version this package reads and writes. Encode always
+// stamps it; Decode rejects any document whose major version differs.
+const Version = "3.0"
+
+// Node x-kind values (closed set).
+const (
+	KindLine  = "line"  // an utterance spoken to the player (NPC, narrator, object)
+	KindReply = "reply" // the player's own utterance
+)
+
+// Edge x-kind values (closed set).
+const (
+	KindNormal = "normal" // a forward transition
+	KindLoop   = "loop"   // a back-edge (a cycle in the dialogue), a rendering hint only
+)
+
+// Canvas is a dCanvas 3.0 document: a single dialogue graph.
+type Canvas struct {
+	// Version is the document's x-dCanvasVersion. Encode always writes "3.0"
+	// regardless of this value; it is populated on Decode.
+	Version string
+	Nodes   []*Node
+	Edges   []*Edge
+
+	// extra holds unrecognised top-level fields, preserved verbatim.
+	extra map[string]json.RawMessage
+}
+
+// Node is a canvas node. Dialogue semantics (Layer 1) attach to text nodes
+// that carry x-kind; other text nodes are plain annotation cards, and file /
+// link / group nodes are opaque to dialogue logic. All are preserved.
+type Node struct {
+	// Layer 0 — JSON Canvas core.
+	ID     string // canvas-local id; edges reference it via fromNode/toNode
+	Type   string // "text" for dialogue nodes
+	X      int
+	Y      int
+	Width  int
+	Height int
+	Color  string // optional
+	Text   string // spoken content (clean text only)
+
+	// Layer 1 — dialogue vocabulary. All optional.
+	XID       string     // engine/domain id (distinct from the canvas ID)
+	Kind      string     // x-kind: KindLine | KindReply
+	Role      string     // x-role: open, project-defined label
+	TextID    string     // x-textId: string-table reference for Text
+	Condition string     // x-condition: engine condition gating this node
+	Action    string     // x-action: engine action executed at this node
+	Sound     string     // x-sound: sound resource for this node's line
+	Character *Character // x-character: speaker information
+
+	// extra holds unrecognised node fields (including Layer 2 x- fields),
+	// preserved verbatim.
+	extra map[string]json.RawMessage
+}
+
+// Edge is a connection between two nodes.
+type Edge struct {
+	// Layer 0 — JSON Canvas core.
+	ID       string
+	FromNode string
+	FromSide string // optional: "top" | "right" | "bottom" | "left"
+	FromEnd  string // optional: "none" (default) | "arrow"
+	ToNode   string
+	ToSide   string // optional
+	ToEnd    string // optional: "arrow" (default) | "none"
+	Color    string // optional
+	Label    string // optional: player-facing choice text
+
+	// Layer 1 — dialogue vocabulary. All optional.
+	XID       string // engine/domain id
+	Kind      string // x-kind: KindNormal | KindLoop
+	Role      string // x-role: open, project-defined label
+	Condition string // x-condition: engine condition gating this transition
+	TextID    string // x-textId: string-table reference for Label
+
+	// extra holds unrecognised edge fields, preserved verbatim.
+	extra map[string]json.RawMessage
+}
+
+// Character holds speaker information for a dialogue node. It is an open object
+// in the spec; recursive preservation of unknown keys is handled in a later
+// step, so for now only the known fields are modelled.
+type Character struct {
+	Name     string `json:"name"`
+	Portrait string `json:"portrait,omitempty"`
+	Gender   string `json:"gender,omitempty"`
+}
+
+// --- preservation helpers ---------------------------------------------------
+
+// cloneExtra returns a fresh map seeded with the preserved unknown fields, with
+// spare capacity for the known fields a marshaller is about to add.
+func cloneExtra(extra map[string]json.RawMessage) map[string]json.RawMessage {
+	out := make(map[string]json.RawMessage, len(extra)+16)
+	maps.Copy(out, extra)
+	return out
+}
+
+// popString unmarshals a known string field out of raw and removes its key, so
+// that whatever remains in raw is genuinely unknown.
+func popString(raw map[string]json.RawMessage, key string, dst *string) error {
+	if v, ok := raw[key]; ok {
+		if err := json.Unmarshal(v, dst); err != nil {
+			return fmt.Errorf("dcanvas: field %q: %w", key, err)
+		}
+		delete(raw, key)
+	}
+	return nil
+}
+
+// popInt is popString's integer counterpart.
+func popInt(raw map[string]json.RawMessage, key string, dst *int) error {
+	if v, ok := raw[key]; ok {
+		if err := json.Unmarshal(v, dst); err != nil {
+			return fmt.Errorf("dcanvas: field %q: %w", key, err)
+		}
+		delete(raw, key)
+	}
+	return nil
+}
+
+// putAlways marshals a value and always stores it (used for required fields).
+func putAlways(m map[string]json.RawMessage, key string, val any) error {
+	b, err := json.Marshal(val)
+	if err != nil {
+		return fmt.Errorf("dcanvas: field %q: %w", key, err)
+	}
+	m[key] = b
+	return nil
+}
+
+// putString stores a string field only when it is non-empty (omitempty).
+func putString(m map[string]json.RawMessage, key, val string) {
+	if val == "" {
+		return
+	}
+	b, _ := json.Marshal(val) // marshalling a string never fails
+	m[key] = b
+}
+
+// putKind validates a closed x-kind value and stores it when non-empty.
+func putKind(m map[string]json.RawMessage, val, a, b, owner string) error {
+	if val == "" {
+		return nil
+	}
+	if val != a && val != b {
+		return fmt.Errorf("dcanvas: invalid %s x-kind %q (want %q or %q)", owner, val, a, b)
+	}
+	enc, _ := json.Marshal(val)
+	m["x-kind"] = enc
+	return nil
+}
+
+// --- Canvas IO --------------------------------------------------------------
+
+// UnmarshalJSON decodes a canvas, keeping any unrecognised top-level field.
+func (c *Canvas) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if err := popString(raw, "x-dCanvasVersion", &c.Version); err != nil {
+		return err
+	}
+	if v, ok := raw["nodes"]; ok {
+		if err := json.Unmarshal(v, &c.Nodes); err != nil {
+			return fmt.Errorf("dcanvas: field %q: %w", "nodes", err)
+		}
+		delete(raw, "nodes")
+	}
+	if v, ok := raw["edges"]; ok {
+		if err := json.Unmarshal(v, &c.Edges); err != nil {
+			return fmt.Errorf("dcanvas: field %q: %w", "edges", err)
+		}
+		delete(raw, "edges")
+	}
+	c.extra = raw
+	return nil
+}
+
+// MarshalJSON encodes a canvas, always stamping the current format version and
+// merging back any preserved unknown top-level fields. nodes and edges are
+// always emitted as arrays so the result is a clean JSON Canvas document.
+func (c *Canvas) MarshalJSON() ([]byte, error) {
+	out := cloneExtra(c.extra)
+	out["x-dCanvasVersion"], _ = json.Marshal(Version)
+
+	nodes := c.Nodes
+	if nodes == nil {
+		nodes = []*Node{}
+	}
+	if err := putAlways(out, "nodes", nodes); err != nil {
+		return nil, err
+	}
+	edges := c.Edges
+	if edges == nil {
+		edges = []*Edge{}
+	}
+	if err := putAlways(out, "edges", edges); err != nil {
+		return nil, err
+	}
+	return json.Marshal(out)
+}
+
+// --- Node IO ----------------------------------------------------------------
+
+// UnmarshalJSON decodes a node, keeping any unrecognised field (including
+// Layer 2 x- fields) in a catch-all.
+func (n *Node) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	for key, dst := range map[string]*string{
+		"id":          &n.ID,
+		"type":        &n.Type,
+		"color":       &n.Color,
+		"text":        &n.Text,
+		"x-id":        &n.XID,
+		"x-kind":      &n.Kind,
+		"x-role":      &n.Role,
+		"x-textId":    &n.TextID,
+		"x-condition": &n.Condition,
+		"x-action":    &n.Action,
+		"x-sound":     &n.Sound,
+	} {
+		if err := popString(raw, key, dst); err != nil {
+			return err
+		}
+	}
+	for key, dst := range map[string]*int{
+		"x": &n.X, "y": &n.Y, "width": &n.Width, "height": &n.Height,
+	} {
+		if err := popInt(raw, key, dst); err != nil {
+			return err
+		}
+	}
+	if v, ok := raw["x-character"]; ok {
+		var ch Character
+		if err := json.Unmarshal(v, &ch); err != nil {
+			return fmt.Errorf("dcanvas: field %q: %w", "x-character", err)
+		}
+		n.Character = &ch
+		delete(raw, "x-character")
+	}
+	n.extra = raw
+	return nil
+}
+
+// MarshalJSON encodes a node, validating x-kind and merging back any preserved
+// unknown fields.
+func (n *Node) MarshalJSON() ([]byte, error) {
+	out := cloneExtra(n.extra)
+
+	// Layer 0 — required geometry/identity always emitted.
+	_ = putAlways(out, "id", n.ID)
+	_ = putAlways(out, "type", n.Type)
+	_ = putAlways(out, "x", n.X)
+	_ = putAlways(out, "y", n.Y)
+	_ = putAlways(out, "width", n.Width)
+	_ = putAlways(out, "height", n.Height)
+	putString(out, "color", n.Color)
+	putString(out, "text", n.Text)
+
+	// Layer 1 — optional dialogue vocabulary.
+	putString(out, "x-id", n.XID)
+	if err := putKind(out, n.Kind, KindLine, KindReply, "node"); err != nil {
+		return nil, err
+	}
+	putString(out, "x-role", n.Role)
+	putString(out, "x-textId", n.TextID)
+	putString(out, "x-condition", n.Condition)
+	putString(out, "x-action", n.Action)
+	putString(out, "x-sound", n.Sound)
+	if n.Character != nil {
+		if err := putAlways(out, "x-character", n.Character); err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(out)
+}
+
+// --- Edge IO ----------------------------------------------------------------
+
+// UnmarshalJSON decodes an edge, keeping any unrecognised field in a catch-all.
+func (e *Edge) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	for key, dst := range map[string]*string{
+		"id":          &e.ID,
+		"fromNode":    &e.FromNode,
+		"fromSide":    &e.FromSide,
+		"fromEnd":     &e.FromEnd,
+		"toNode":      &e.ToNode,
+		"toSide":      &e.ToSide,
+		"toEnd":       &e.ToEnd,
+		"color":       &e.Color,
+		"label":       &e.Label,
+		"x-id":        &e.XID,
+		"x-kind":      &e.Kind,
+		"x-role":      &e.Role,
+		"x-condition": &e.Condition,
+		"x-textId":    &e.TextID,
+	} {
+		if err := popString(raw, key, dst); err != nil {
+			return err
+		}
+	}
+	e.extra = raw
+	return nil
+}
+
+// MarshalJSON encodes an edge, validating x-kind and merging back any preserved
+// unknown fields.
+func (e *Edge) MarshalJSON() ([]byte, error) {
+	out := cloneExtra(e.extra)
+
+	// Layer 0 — required identity/endpoints always emitted.
+	_ = putAlways(out, "id", e.ID)
+	_ = putAlways(out, "fromNode", e.FromNode)
+	_ = putAlways(out, "toNode", e.ToNode)
+	putString(out, "fromSide", e.FromSide)
+	putString(out, "fromEnd", e.FromEnd)
+	putString(out, "toSide", e.ToSide)
+	putString(out, "toEnd", e.ToEnd)
+	putString(out, "color", e.Color)
+	putString(out, "label", e.Label)
+
+	// Layer 1 — optional dialogue vocabulary.
+	putString(out, "x-id", e.XID)
+	if err := putKind(out, e.Kind, KindNormal, KindLoop, "edge"); err != nil {
+		return nil, err
+	}
+	putString(out, "x-role", e.Role)
+	putString(out, "x-condition", e.Condition)
+	putString(out, "x-textId", e.TextID)
+	return json.Marshal(out)
+}
+
+// HasOverlappingNodes reports whether any two nodes in the canvas have
+// overlapping bounding boxes. Nodes that merely touch at an edge are
+// not considered overlapping (strict less-than comparison).
+func (c *Canvas) HasOverlappingNodes() bool {
+	nodes := c.Nodes
+	for i := 0; i < len(nodes); i++ {
+		a := nodes[i]
+		for j := i + 1; j < len(nodes); j++ {
+			b := nodes[j]
+			if a.X < b.X+b.Width &&
+				b.X < a.X+a.Width &&
+				a.Y < b.Y+b.Height &&
+				b.Y < a.Y+a.Height {
+				return true
+			}
+		}
+	}
+	return false
+}

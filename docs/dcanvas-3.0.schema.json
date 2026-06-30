@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/SBT/sbt-dialog-viewer/docs/dcanvas-3.0.schema.json",
+  "title": "dCanvas 3.0",
+  "description": "Dialogue Canvas format v3.0 — a strict superset of JSON Canvas 1.0 with x- extension fields for dialogue metadata. Implementations MUST preserve unrecognised fields on round-trip, recursively.",
+  "type": "object",
+  "required": ["x-dCanvasVersion"],
+  "additionalProperties": true,
+  "properties": {
+    "x-dCanvasVersion": {
+      "type": "string",
+      "const": "3.0",
+      "description": "Format version identifier. Major version governs compatibility."
+    },
+    "nodes": {
+      "type": "array",
+      "description": "Canvas nodes in ascending z-index order.",
+      "items": { "$ref": "#/definitions/node" }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Connections between nodes.",
+      "items": { "$ref": "#/definitions/edge" }
+    }
+  },
+  "definitions": {
+    "canvasColor": {
+      "type": "string",
+      "description": "Node or edge color. Either a hex color (e.g. \"#FF0000\") or a preset number (\"1\"-\"6\").",
+      "examples": ["#FF0000", "1", "2", "3", "4", "5", "6"]
+    },
+    "side": {
+      "type": "string",
+      "enum": ["top", "right", "bottom", "left"],
+      "description": "Side of a node where an edge connects."
+    },
+    "endShape": {
+      "type": "string",
+      "enum": ["none", "arrow"],
+      "description": "Shape of an edge endpoint."
+    },
+    "character": {
+      "type": "object",
+      "description": "Speaker information for a dialogue node. Open object: project-specific keys are allowed and MUST be preserved.",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string", "description": "Character display name." },
+        "portrait": { "type": "string", "description": "Portrait image filename. Empty string or \"None.png\" means no portrait." },
+        "gender": { "type": "string", "description": "Speaker gender (project-defined vocabulary)." }
+      }
+    },
+    "node": {
+      "type": "object",
+      "description": "A canvas node. Only text-type nodes carry dialogue semantics; a text node with x-kind is a dialogue node, otherwise a plain annotation. Unknown fields MUST be preserved.",
+      "required": ["id", "type", "x", "y", "width", "height"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "description": "Unique node identifier within the file (the canvas id). Referenced by edges." },
+        "type": { "type": "string", "enum": ["text", "file", "link", "group"], "description": "Node type." },
+        "x": { "type": "integer", "description": "X position in pixels." },
+        "y": { "type": "integer", "description": "Y position in pixels." },
+        "width": { "type": "integer", "description": "Width in pixels." },
+        "height": { "type": "integer", "description": "Height in pixels." },
+        "color": { "$ref": "#/definitions/canvasColor" },
+        "text": { "type": "string", "description": "Spoken content of the node. For a line node, what the character says; for a reply node, what the player says. Clean text only." },
+        "file": { "type": "string", "description": "Path to referenced file (file-type nodes)." },
+        "subpath": { "type": "string", "description": "Subpath to a heading or block within a file (file-type nodes)." },
+        "url": { "type": "string", "description": "Referenced URL (link-type nodes)." },
+        "label": { "type": "string", "description": "Text label (group-type nodes)." },
+        "background": { "type": "string", "description": "Background image path (group-type nodes)." },
+        "backgroundStyle": { "type": "string", "enum": ["cover", "ratio", "repeat"], "description": "Background rendering style (group-type nodes)." },
+        "x-id": { "type": "string", "description": "Engine/domain identifier of this node (e.g. \"ABELA[5]\"). Distinct from the canvas id." },
+        "x-kind": { "type": "string", "enum": ["line", "reply"], "description": "Closed rendering hint. line = utterance spoken to the player; reply = the player's own utterance." },
+        "x-role": { "type": "string", "description": "Open, project-defined semantic label (e.g. \"state\", \"transition\", \"paraphrase\")." },
+        "x-textId": { "type": "string", "description": "String-table reference for text (e.g. \"#2687\")." },
+        "x-condition": { "type": "string", "description": "Engine condition/trigger gating this node." },
+        "x-action": { "type": "string", "description": "Engine action executed when this node is reached." },
+        "x-sound": { "type": "string", "description": "Sound resource for this node's spoken line." },
+        "x-character": { "$ref": "#/definitions/character" }
+      },
+      "if": {
+        "properties": { "type": { "const": "text" } },
+        "required": ["type"]
+      },
+      "then": {
+        "required": ["id", "type", "x", "y", "width", "height", "text"]
+      }
+    },
+    "edge": {
+      "type": "object",
+      "description": "A connection between two nodes. Unknown fields MUST be preserved.",
+      "required": ["id", "fromNode", "toNode"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "description": "Unique edge identifier within the file." },
+        "fromNode": { "type": "string", "description": "Source node id." },
+        "fromSide": { "$ref": "#/definitions/side", "description": "Side of the source node where the edge starts." },
+        "fromEnd": { "$ref": "#/definitions/endShape", "description": "Endpoint shape at edge start. Defaults to \"none\".", "default": "none" },
+        "toNode": { "type": "string", "description": "Destination node id." },
+        "toSide": { "$ref": "#/definitions/side", "description": "Side of the destination node where the edge ends." },
+        "toEnd": { "$ref": "#/definitions/endShape", "description": "Endpoint shape at edge end. Defaults to \"arrow\".", "default": "arrow" },
+        "color": { "$ref": "#/definitions/canvasColor" },
+        "label": { "type": "string", "description": "Player-facing choice text — what the player sees and picks." },
+        "x-id": { "type": "string", "description": "Engine/domain identifier of this edge." },
+        "x-kind": { "type": "string", "enum": ["normal", "loop"], "description": "Closed rendering hint. loop marks a back-edge (a cycle). Rendering only; layout does not exclude loops." },
+        "x-role": { "type": "string", "description": "Open, project-defined label." },
+        "x-condition": { "type": "string", "description": "Engine condition expression that gates this transition." },
+        "x-textId": { "type": "string", "description": "String-table reference for label, when present." }
+      }
+    }
+  }
+}

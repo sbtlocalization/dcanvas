@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/SBT/sbt-dialog-viewer/docs/dcanvas-1.0.schema.json",
+  "title": "dCanvas 1.0",
+  "description": "Dialog Canvas format v1.0 — JSON Canvas 1.0 with game dialog metadata encoded in standard fields (YAML front-matter in text, conditions in label).",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "x-dCanvasVersion": {
+      "type": "string",
+      "description": "Optional format version identifier. Usually absent in v1.0 files."
+    },
+    "nodes": {
+      "type": "array",
+      "description": "Canvas nodes in ascending z-index order.",
+      "items": {
+        "$ref": "#/definitions/node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Connections between nodes.",
+      "items": {
+        "$ref": "#/definitions/edge"
+      }
+    }
+  },
+  "definitions": {
+    "canvasColor": {
+      "type": "string",
+      "description": "Node or edge color. Either a hex color (e.g. \"#FF0000\") or a preset number (\"1\"–\"6\").",
+      "examples": ["#FF0000", "1", "2", "3", "4", "5", "6"]
+    },
+    "side": {
+      "type": "string",
+      "enum": ["top", "right", "bottom", "left"],
+      "description": "Side of a node where an edge connects."
+    },
+    "endShape": {
+      "type": "string",
+      "enum": ["none", "arrow"],
+      "description": "Shape of an edge endpoint."
+    },
+    "node": {
+      "type": "object",
+      "description": "A canvas node. The text field may contain YAML front-matter with game dialog metadata.",
+      "required": ["id", "type", "x", "y", "width", "height"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique node identifier. Encodes role via prefix: \"state-\" for NPC lines, \"transition-\" for player choices."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["text", "file", "link", "group"],
+          "description": "Node type."
+        },
+        "x": {
+          "type": "integer",
+          "description": "X position in pixels."
+        },
+        "y": {
+          "type": "integer",
+          "description": "Y position in pixels."
+        },
+        "width": {
+          "type": "integer",
+          "description": "Width in pixels."
+        },
+        "height": {
+          "type": "integer",
+          "description": "Height in pixels."
+        },
+        "color": {
+          "$ref": "#/definitions/canvasColor"
+        },
+        "text": {
+          "type": "string",
+          "description": "Node content. May contain YAML front-matter (---delimited), dialog text, and journal text (after >---- JOURNAL ----< separator)."
+        },
+        "file": {
+          "type": "string",
+          "description": "Path to referenced file (file-type nodes)."
+        },
+        "subpath": {
+          "type": "string",
+          "description": "Subpath linking to a heading or block within a file (file-type nodes)."
+        },
+        "url": {
+          "type": "string",
+          "description": "Referenced URL (link-type nodes)."
+        },
+        "label": {
+          "type": "string",
+          "description": "Text label (group-type nodes)."
+        },
+        "background": {
+          "type": "string",
+          "description": "Background image path (group-type nodes)."
+        },
+        "backgroundStyle": {
+          "type": "string",
+          "enum": ["cover", "ratio", "repeat"],
+          "description": "Background rendering style (group-type nodes)."
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "description": "A connection between two nodes.",
+      "required": ["id", "fromNode", "toNode"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique edge identifier."
+        },
+        "fromNode": {
+          "type": "string",
+          "description": "Source node id."
+        },
+        "fromSide": {
+          "$ref": "#/definitions/side",
+          "description": "Side of the source node where the edge starts."
+        },
+        "fromEnd": {
+          "$ref": "#/definitions/endShape",
+          "description": "Endpoint shape at edge start. Defaults to \"none\".",
+          "default": "none"
+        },
+        "toNode": {
+          "type": "string",
+          "description": "Destination node id."
+        },
+        "toSide": {
+          "$ref": "#/definitions/side",
+          "description": "Side of the destination node where the edge ends."
+        },
+        "toEnd": {
+          "$ref": "#/definitions/endShape",
+          "description": "Endpoint shape at edge end. Defaults to \"arrow\".",
+          "default": "arrow"
+        },
+        "color": {
+          "$ref": "#/definitions/canvasColor"
+        },
+        "label": {
+          "type": "string",
+          "description": "Game-engine condition expression (repurposed from JSON Canvas display label)."
+        }
+      }
+    }
+  }
+}
