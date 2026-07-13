@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0003 - JSON Schema as cross-language contract and writer conformance]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0006 - Conformance harness validating writer output against the JSON Schema]]"
@@ -92,7 +92,7 @@ The workflow checks out the repository, sets up the Go toolchain matching `go.mo
 
 # Acceptance criteria
 
-- [ ] A GitHub Actions workflow triggers on push and pull request.
-- [ ] It sets up the Go version declared in `go.mod`.
-- [ ] It runs `go vet ./...` and `go test ./...`; a failing conformance test fails the workflow.
-- [ ] The workflow is green on the current `main`.
+- [x] A GitHub Actions workflow triggers on push and pull request.
+- [x] It sets up the Go version declared in `go.mod`.
+- [x] It runs `go vet ./...` and `go test ./...`; a failing conformance test fails the workflow.
+- [ ] The workflow is green on the current `main`. <!-- Local `go vet ./...` + `go test ./...` are green; the GitHub Actions run confirms on the first push. -->
