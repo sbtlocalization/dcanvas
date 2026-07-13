@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0010 - Quarantine layout into a layout subpackage]]"
@@ -95,8 +95,8 @@ Semantics:
 
 # Acceptance criteria
 
-- [ ] `Layout` returns an error; callers can detect and surface a failed layout.
-- [ ] An empty graph and a graph with no layout edges return nil and leave positions unchanged.
-- [ ] A connected graph lays out and returns nil.
-- [ ] A cyclic graph still completes without a panic escaping, per [[ADR-0009 - Layout may read x-kind and the loop strategy is configurable|ADR-0009]].
-- [ ] Existing layout tests are updated to the new signature; `go test ./...` passes.
+- [x] `Layout` returns an error; callers can detect and surface a failed layout.
+- [x] An empty graph and a graph with no layout edges return nil and leave positions unchanged.
+- [x] A connected graph lays out and returns nil.
+- [x] A cyclic graph still completes without a panic escaping, per [[ADR-0009 - Layout may read x-kind and the loop strategy is configurable|ADR-0009]].
+- [x] Existing layout tests are updated to the new signature; `go test ./...` passes.

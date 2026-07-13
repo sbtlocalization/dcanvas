@@ -37,7 +37,9 @@ func TestLayout_ConnectedGraphPositionsAndNoOverlap(t *testing.T) {
 		},
 	}
 
-	Layout(c)
+	if err := Layout(c); err != nil {
+		t.Fatalf("Layout on a connected graph should succeed, got: %v", err)
+	}
 
 	// At least one node must move off the default (0,0).
 	moved := false
@@ -71,8 +73,10 @@ func TestLayout_CycleDoesNotPanic(t *testing.T) {
 		},
 	}
 
-	// Must complete without panicking.
-	Layout(c)
+	// Must complete without a panic escaping, and report success.
+	if err := Layout(c); err != nil {
+		t.Fatalf("Layout on a cyclic graph should not error, got: %v", err)
+	}
 
 	if c.HasOverlappingNodes() {
 		t.Error("expected laid-out nodes not to overlap for a cyclic graph")
@@ -101,7 +105,9 @@ func TestLayout_LoopStrategy(t *testing.T) {
 	}
 
 	cut := build()
-	Layout(cut) // default LoopCut
+	if err := Layout(cut); err != nil { // default LoopCut
+		t.Fatalf("LoopCut no-op should succeed, got: %v", err)
+	}
 	for _, n := range cut.Nodes {
 		if n.X != 0 || n.Y != 0 {
 			t.Errorf("LoopCut should ignore the loop edge and leave %s at origin, got (%d,%d)", n.ID, n.X, n.Y)
@@ -109,7 +115,9 @@ func TestLayout_LoopStrategy(t *testing.T) {
 	}
 
 	dfs := build()
-	Layout(dfs, WithLoopStrategy(LoopDFS))
+	if err := Layout(dfs, WithLoopStrategy(LoopDFS)); err != nil {
+		t.Fatalf("LoopDFS layout should succeed, got: %v", err)
+	}
 	moved := false
 	for _, n := range dfs.Nodes {
 		if n.X != 0 || n.Y != 0 {
@@ -149,7 +157,9 @@ func TestLayout_NoOp(t *testing.T) {
 				before[i] = [2]int{n.X, n.Y}
 			}
 
-			Layout(tt.canvas)
+			if err := Layout(tt.canvas); err != nil {
+				t.Fatalf("no-op layout should return nil, got: %v", err)
+			}
 
 			for i, n := range tt.canvas.Nodes {
 				if n.X != before[i][0] || n.Y != before[i][1] {

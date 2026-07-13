@@ -15,6 +15,8 @@
 package layout
 
 import (
+	"fmt"
+
 	"github.com/nulab/autog"
 	"github.com/nulab/autog/graph"
 	"github.com/sbtlocalization/dcanvas"
@@ -62,17 +64,20 @@ func WithLoopStrategy(s LoopStrategy) Option {
 // Layout is a best-effort, optional operation: a canvas can be encoded with
 // hand-set positions without ever calling it. An empty graph, or one with no
 // layout edges (e.g. every edge cut as a loop), is a no-op that leaves
-// positions untouched; if the underlying engine panics, the panic is recovered
-// and nodes keep their existing positions. Nodes not referenced by any layout
-// edge are left where they are (autog only places connected nodes).
-func Layout(c *dcanvas.Canvas, opts ...Option) {
+// positions untouched and returns nil — a success, not a failure. A genuine
+// layout failure (the underlying engine panicking on malformed input) is
+// returned as an error rather than silently swallowed, so a caller whose
+// primary job is layout (the CLI) can report it instead of claiming success
+// while nothing moved. Nodes not referenced by any layout edge are left where
+// they are (autog only places connected nodes).
+func Layout(c *dcanvas.Canvas, opts ...Option) (err error) {
 	cfg := config{loops: LoopCut}
 	for _, o := range opts {
 		o(&cfg)
 	}
 
 	if len(c.Nodes) == 0 {
-		return
+		return nil
 	}
 
 	// Index nodes by id so results can be written back, and build per-node
@@ -93,11 +98,16 @@ func Layout(c *dcanvas.Canvas, opts ...Option) {
 		layoutEdges = append(layoutEdges, []string{e.FromNode, e.ToNode})
 	}
 	if len(layoutEdges) == 0 {
-		return // nothing to lay out; leave positions as-is
+		return nil // nothing to lay out; leave positions as-is
 	}
 
-	// autog can panic on malformed input; never let that escape Layout.
-	defer func() { _ = recover() }()
+	// autog can panic on malformed input; convert that into an error rather than
+	// letting it escape or silently discarding a failed layout.
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("layout: engine failed: %v", r)
+		}
+	}()
 
 	res := autog.Layout(
 		graph.EdgeSlice(layoutEdges),
@@ -115,4 +125,5 @@ func Layout(c *dcanvas.Canvas, opts ...Option) {
 			cn.Y = int(n.Y)
 		}
 	}
+	return nil
 }
