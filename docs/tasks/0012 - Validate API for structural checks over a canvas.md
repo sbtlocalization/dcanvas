@@ -1,8 +1,8 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: Backlog
-priority: 2
+status: Done
+priority: 3
 blocked by:
 kind: Task
 mode: AFK
@@ -98,8 +98,8 @@ Checks:
 
 # Acceptance criteria
 
-- [ ] `Validate` returns an error identifying: a duplicate node id; an edge referencing a missing node; an out-of-set `x-kind` (node and edge); a `text` node without `text`; an `x-character` without `name`.
-- [ ] A well-formed canvas returns no error.
-- [ ] Errors name the offending element enough for a user to locate it.
-- [ ] Table-driven tests cover each failure and the happy path.
-- [ ] `go test ./...` passes.
+- [x] `Validate` returns an error identifying: a duplicate node id; an edge referencing a missing node; an out-of-set `x-kind` (node and edge); a `text` node without `text`; an `x-character` without `name`.
+- [x] A well-formed canvas returns no error.
+- [x] Errors name the offending element enough for a user to locate it.
+- [x] Table-driven tests cover each failure and the happy path.
+- [x] `go test ./...` passes.

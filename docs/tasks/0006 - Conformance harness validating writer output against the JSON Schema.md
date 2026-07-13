@@ -1,8 +1,8 @@
 ---
 epic: "[[EPIC-0003 - JSON Schema as cross-language contract and writer conformance]]"
 parent:
-status: Backlog
-priority: 1
+status: Done
+priority: 4
 blocked by:
 kind: Task
 mode: AFK
@@ -100,8 +100,8 @@ Assert on external behaviour only — the encoded bytes validate — never the i
 
 # Acceptance criteria
 
-- [ ] A draft-07 JSON-Schema validator is a test-only dependency; `go list` shows no new non-stdlib dependency in the library's non-test imports.
-- [ ] The test loads `docs/dcanvas-3.0.schema.json` and validates encoded output against it.
-- [ ] Representative canvases (line + `x-character`, reply + Layer 2 field, edge with label + condition, minimal document) are each built via the public API, encoded, and pass validation.
-- [ ] The test asserts on encoded bytes, not on internal fields.
-- [ ] `go test ./...` passes.
+- [x] A draft-07 JSON-Schema validator is a test-only dependency; `go list` shows no new non-stdlib dependency in the library's non-test imports.
+- [x] The test loads `docs/dcanvas-3.0.schema.json` and validates encoded output against it.
+- [x] Representative canvases (line + `x-character`, reply + Layer 2 field, edge with label + condition, minimal document) are each built via the public API, encoded, and pass validation.
+- [x] The test asserts on encoded bytes, not on internal fields.
+- [x] `go test ./...` passes.

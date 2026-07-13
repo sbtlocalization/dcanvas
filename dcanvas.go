@@ -157,12 +157,19 @@ func (w *objectWriter) str(key, val string) {
 	w.fields = append(w.fields, field{key, b})
 }
 
+// validKind reports whether an x-kind value is empty (the field is optional) or
+// a member of its closed two-value set. It is the single source of truth for
+// closed-set membership, shared by the writer (objectWriter.kind) and Validate.
+func validKind(val, a, b string) bool {
+	return val == "" || val == a || val == b
+}
+
 // kind validates a closed x-kind value and emits it when non-empty.
 func (w *objectWriter) kind(val, a, b, owner string) error {
 	if val == "" {
 		return nil
 	}
-	if val != a && val != b {
+	if !validKind(val, a, b) {
 		return fmt.Errorf("dcanvas: invalid %s x-kind %q (want %q or %q)", owner, val, a, b)
 	}
 	w.str("x-kind", val)

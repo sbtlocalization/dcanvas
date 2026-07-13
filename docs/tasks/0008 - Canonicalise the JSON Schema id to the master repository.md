@@ -1,8 +1,8 @@
 ---
 epic: "[[EPIC-0003 - JSON Schema as cross-language contract and writer conformance]]"
 parent:
-status: Backlog
-priority: 2
+status: Done
+priority: 3
 blocked by:
 kind: Task
 mode: AFK
@@ -93,8 +93,8 @@ Keep the schema free of implementation/tooling detail (it describes the format o
 
 # Acceptance criteria
 
-- [ ] The schema `$id` resolves to `github.com/sbtlocalization/dcanvas` (canonical form agreed in the frontmatter of the epic).
-- [ ] No remaining reference to `sbt-dialog-viewer` or the inconsistent `SBT` org spelling in the schema.
-- [ ] A test asserts the loaded schema's `$id` equals the canonical value.
-- [ ] The schema still validates the representative outputs from the conformance harness.
-- [ ] `go test ./...` passes.
+- [x] The schema `$id` resolves to `github.com/sbtlocalization/dcanvas` (canonical form agreed in the frontmatter of the epic).
+- [x] No remaining reference to `sbt-dialog-viewer` or the inconsistent `SBT` org spelling in the schema.
+- [x] A test asserts the loaded schema's `$id` equals the canonical value.
+- [x] The schema still validates the representative outputs from the conformance harness.
+- [x] `go test ./...` passes.

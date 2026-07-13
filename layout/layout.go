@@ -3,11 +3,21 @@
 //
 // SPDX-License-Identifier: BlueOak-1.0.0
 
-package dcanvas
+// Package layout assigns positions to a dCanvas graph with a generic layered
+// auto-layout.
+//
+// It is a separate package from dcanvas so that the core format library (types,
+// IO, preservation) carries no third-party dependency: the layout engine
+// (currently github.com/nulab/autog) is quarantined here behind an
+// engine-neutral boundary. The public API — Layout, LoopStrategy, LoopCut,
+// LoopDFS, WithLoopStrategy — exposes no engine types, so the engine can be
+// replaced later without breaking callers (see ADR-0009 and ADR-0011).
+package layout
 
 import (
 	"github.com/nulab/autog"
 	"github.com/nulab/autog/graph"
+	"github.com/sbtlocalization/dcanvas"
 )
 
 // LoopStrategy controls how loop (cyclic) edges participate in layout.
@@ -27,17 +37,17 @@ const (
 	LoopDFS
 )
 
-// LayoutOption configures Layout.
-type LayoutOption func(*layoutConfig)
+// Option configures Layout.
+type Option func(*config)
 
-type layoutConfig struct {
+type config struct {
 	loops LoopStrategy
 }
 
 // WithLoopStrategy selects how loop (cyclic) edges are handled during layout.
 // The default is LoopCut.
-func WithLoopStrategy(s LoopStrategy) LayoutOption {
-	return func(cfg *layoutConfig) { cfg.loops = s }
+func WithLoopStrategy(s LoopStrategy) Option {
+	return func(cfg *config) { cfg.loops = s }
 }
 
 // Layout assigns positions to the canvas's nodes with a generic layered
@@ -55,8 +65,8 @@ func WithLoopStrategy(s LoopStrategy) LayoutOption {
 // positions untouched; if the underlying engine panics, the panic is recovered
 // and nodes keep their existing positions. Nodes not referenced by any layout
 // edge are left where they are (autog only places connected nodes).
-func Layout(c *Canvas, opts ...LayoutOption) {
-	cfg := layoutConfig{loops: LoopCut}
+func Layout(c *dcanvas.Canvas, opts ...Option) {
+	cfg := config{loops: LoopCut}
 	for _, o := range opts {
 		o(&cfg)
 	}
@@ -67,7 +77,7 @@ func Layout(c *Canvas, opts ...LayoutOption) {
 
 	// Index nodes by id so results can be written back, and build per-node
 	// sizes for the layout engine.
-	nodesByID := make(map[string]*Node, len(c.Nodes))
+	nodesByID := make(map[string]*dcanvas.Node, len(c.Nodes))
 	sizes := make(map[string]graph.Size, len(c.Nodes))
 	for _, n := range c.Nodes {
 		nodesByID[n.ID] = n
@@ -77,7 +87,7 @@ func Layout(c *Canvas, opts ...LayoutOption) {
 	// Build the layout edge set, dropping x-kind:loop edges under LoopCut.
 	layoutEdges := make([][]string, 0, len(c.Edges))
 	for _, e := range c.Edges {
-		if cfg.loops == LoopCut && e.Kind == KindLoop {
+		if cfg.loops == LoopCut && e.Kind == dcanvas.KindLoop {
 			continue
 		}
 		layoutEdges = append(layoutEdges, []string{e.FromNode, e.ToNode})
@@ -89,7 +99,7 @@ func Layout(c *Canvas, opts ...LayoutOption) {
 	// autog can panic on malformed input; never let that escape Layout.
 	defer func() { _ = recover() }()
 
-	layout := autog.Layout(
+	res := autog.Layout(
 		graph.EdgeSlice(layoutEdges),
 		autog.WithNodeSize(sizes),
 		autog.WithLayerSpacing(200),
@@ -99,7 +109,7 @@ func Layout(c *Canvas, opts ...LayoutOption) {
 		// resolver for LoopDFS; the default greedy breaker tangles dialogues.
 		autog.WithCycleBreaking(autog.CycleBreakingDepthFirst),
 	)
-	for _, n := range layout.Nodes {
+	for _, n := range res.Nodes {
 		if cn, ok := nodesByID[n.ID]; ok {
 			cn.X = int(n.X)
 			cn.Y = int(n.Y)

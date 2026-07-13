@@ -3,29 +3,33 @@
 //
 // SPDX-License-Identifier: BlueOak-1.0.0
 
-package dcanvas
+package layout
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sbtlocalization/dcanvas"
+)
 
 // sized returns a node with an id and a bounding box; X/Y default to 0 so a
 // post-layout move is observable.
-func sized(id string, w, h int) *Node {
-	return &Node{ID: id, Width: w, Height: h}
+func sized(id string, w, h int) *dcanvas.Node {
+	return &dcanvas.Node{ID: id, Width: w, Height: h}
 }
 
-func edge(from, to string) *Edge {
-	return &Edge{FromNode: from, ToNode: to}
+func edge(from, to string) *dcanvas.Edge {
+	return &dcanvas.Edge{FromNode: from, ToNode: to}
 }
 
 func TestLayout_ConnectedGraphPositionsAndNoOverlap(t *testing.T) {
-	c := &Canvas{
-		Nodes: []*Node{
+	c := &dcanvas.Canvas{
+		Nodes: []*dcanvas.Node{
 			sized("a", 400, 300),
 			sized("b", 200, 150),
 			sized("c", 400, 300),
 			sized("d", 100, 100),
 		},
-		Edges: []*Edge{
+		Edges: []*dcanvas.Edge{
 			edge("a", "b"),
 			edge("a", "c"),
 			edge("b", "d"),
@@ -54,16 +58,16 @@ func TestLayout_ConnectedGraphPositionsAndNoOverlap(t *testing.T) {
 
 func TestLayout_CycleDoesNotPanic(t *testing.T) {
 	// a -> b -> c -> a, with the back-edge marked as a loop.
-	c := &Canvas{
-		Nodes: []*Node{
+	c := &dcanvas.Canvas{
+		Nodes: []*dcanvas.Node{
 			sized("a", 300, 200),
 			sized("b", 300, 200),
 			sized("c", 300, 200),
 		},
-		Edges: []*Edge{
+		Edges: []*dcanvas.Edge{
 			edge("a", "b"),
 			edge("b", "c"),
-			{FromNode: "c", ToNode: "a", Kind: KindLoop},
+			{FromNode: "c", ToNode: "a", Kind: dcanvas.KindLoop},
 		},
 	}
 
@@ -89,10 +93,10 @@ func TestLayout_CycleDoesNotPanic(t *testing.T) {
 func TestLayout_LoopStrategy(t *testing.T) {
 	// A canvas whose only edge is a loop: under LoopCut it is dropped (no layout
 	// edges → no-op), under LoopDFS it lays the two nodes out.
-	build := func() *Canvas {
-		return &Canvas{
-			Nodes: []*Node{sized("a", 400, 300), sized("b", 400, 300)},
-			Edges: []*Edge{{FromNode: "a", ToNode: "b", Kind: KindLoop}},
+	build := func() *dcanvas.Canvas {
+		return &dcanvas.Canvas{
+			Nodes: []*dcanvas.Node{sized("a", 400, 300), sized("b", 400, 300)},
+			Edges: []*dcanvas.Edge{{FromNode: "a", ToNode: "b", Kind: dcanvas.KindLoop}},
 		}
 	}
 
@@ -123,15 +127,15 @@ func TestLayout_LoopStrategy(t *testing.T) {
 func TestLayout_NoOp(t *testing.T) {
 	tests := []struct {
 		name   string
-		canvas *Canvas
+		canvas *dcanvas.Canvas
 	}{
 		{
 			name:   "empty graph",
-			canvas: &Canvas{},
+			canvas: &dcanvas.Canvas{},
 		},
 		{
 			name: "nodes but no edges",
-			canvas: &Canvas{Nodes: []*Node{
+			canvas: &dcanvas.Canvas{Nodes: []*dcanvas.Node{
 				sized("a", 400, 300),
 				sized("b", 200, 150),
 			}},

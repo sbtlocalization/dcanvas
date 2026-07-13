@@ -1,8 +1,8 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: Backlog
-priority: 2
+status: Done
+priority: 3
 blocked by:
 kind: Task
 mode: AFK
@@ -93,8 +93,8 @@ This is a pure restructuring: behaviour is unchanged; only the package layout an
 
 # Acceptance criteria
 
-- [ ] Layout lives in a `layout` subpackage; its tests move with it and pass.
-- [ ] The root `dcanvas` package imports nothing outside the standard library (verifiable via `go list` on its non-test imports).
-- [ ] `autog` appears only as a dependency of the `layout` subpackage.
-- [ ] The public layout API exposes no `autog`/`graph` types in its signatures.
-- [ ] `go vet ./...` and `go test ./...` pass.
+- [x] Layout lives in a `layout` subpackage; its tests move with it and pass.
+- [x] The root `dcanvas` package imports nothing outside the standard library (verifiable via `go list` on its non-test imports).
+- [x] `autog` appears only as a dependency of the `layout` subpackage.
+- [x] The public layout API exposes no `autog`/`graph` types in its signatures.
+- [x] `go vet ./...` and `go test ./...` pass.
