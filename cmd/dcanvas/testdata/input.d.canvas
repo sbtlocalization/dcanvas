@@ -1,0 +1,16 @@
+{
+	"x-dCanvasVersion": "3.0",
+	"x-project": {"campaign": "demo"},
+	"nodes": [
+		{"id": "a", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "Start", "x-kind": "line", "x-journalText": "keep me"},
+		{"id": "b", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "Left", "x-kind": "reply"},
+		{"id": "c", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "Right", "x-kind": "reply"},
+		{"id": "d", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "End", "x-kind": "line"}
+	],
+	"edges": [
+		{"id": "e1", "fromNode": "a", "toNode": "b", "x-kind": "normal"},
+		{"id": "e2", "fromNode": "a", "toNode": "c", "x-kind": "normal"},
+		{"id": "e3", "fromNode": "b", "toNode": "d", "x-kind": "normal"},
+		{"id": "e4", "fromNode": "c", "toNode": "d", "x-kind": "normal"}
+	]
+}

@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0010 - Quarantine layout into a layout subpackage]]"
@@ -94,8 +94,8 @@ Robustness hardening (input validation, layout-failure reporting, loop-strategy 
 
 # Acceptance criteria
 
-- [ ] Running the CLI on a coordinate-less `.d.canvas` file produces a file whose nodes have been positioned (at least one connected node moved off its input position).
-- [ ] Both `.d.canvas` and `.dcanvas` inputs are accepted.
-- [ ] Fields the tool did not touch (including Layer 2 project fields) are preserved in the output.
-- [ ] A golden-file test drives the CLI end-to-end (input file → expected output file).
-- [ ] `go test ./...` passes.
+- [x] Running the CLI on a coordinate-less `.d.canvas` file produces a file whose nodes have been positioned (at least one connected node moved off its input position).
+- [x] Both `.d.canvas` and `.dcanvas` inputs are accepted.
+- [x] Fields the tool did not touch (including Layer 2 project fields) are preserved in the output.
+- [x] A golden-file test drives the CLI end-to-end (input file → expected output file).
+- [x] `go test ./...` passes.
