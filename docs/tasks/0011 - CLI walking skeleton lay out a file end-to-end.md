@@ -1,9 +1,10 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: Backlog
-priority: 2
-blocked by: ["[[0010 - Quarantine layout into a layout subpackage]]"]
+status: To do
+priority: 3
+blocked by:
+  - "[[0010 - Quarantine layout into a layout subpackage]]"
 kind: Task
 mode: AFK
 ---

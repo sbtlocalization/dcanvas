@@ -1,9 +1,13 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: Backlog
-priority: 3
-blocked by: ["[[0011 - CLI walking skeleton lay out a file end-to-end]]", "[[0012 - Validate API for structural checks over a canvas]]", "[[0013 - Lossless round-trip preserve version and stop rejecting x-kind on write]]", "[[0014 - Layout returns an error instead of silently recovering]]"]
+status: To do
+priority: 2
+blocked by:
+  - "[[0011 - CLI walking skeleton lay out a file end-to-end]]"
+  - "[[0012 - Validate API for structural checks over a canvas]]"
+  - "[[0013 - Lossless round-trip preserve version and stop rejecting x-kind on write]]"
+  - "[[0014 - Layout returns an error instead of silently recovering]]"
 kind: Task
 mode: AFK
 ---

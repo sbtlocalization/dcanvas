@@ -1,9 +1,10 @@
 ---
 epic: "[[EPIC-0003 - JSON Schema as cross-language contract and writer conformance]]"
 parent:
-status: Backlog
-priority: 2
-blocked by: ["[[0006 - Conformance harness validating writer output against the JSON Schema]]"]
+status: To do
+priority: 3
+blocked by:
+  - "[[0006 - Conformance harness validating writer output against the JSON Schema]]"
 kind: Bug
 mode: AFK
 ---

@@ -1,9 +1,10 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: Backlog
-priority: 2
-blocked by: ["[[0012 - Validate API for structural checks over a canvas]]"]
+status: To do
+priority: 3
+blocked by:
+  - "[[0012 - Validate API for structural checks over a canvas]]"
 kind: Bug
 mode: AFK
 ---

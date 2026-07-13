@@ -1,9 +1,10 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: Backlog
-priority: 4
-blocked by: ["[[0011 - CLI walking skeleton lay out a file end-to-end]]"]
+status: To do
+priority: 1
+blocked by:
+  - "[[0011 - CLI walking skeleton lay out a file end-to-end]]"
 kind: Task
 mode: AFK
 ---
