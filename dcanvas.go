@@ -159,21 +159,10 @@ func (w *objectWriter) str(key, val string) {
 
 // validKind reports whether an x-kind value is empty (the field is optional) or
 // a member of its closed two-value set. It is the single source of truth for
-// closed-set membership, shared by the writer (objectWriter.kind) and Validate.
+// closed-set membership, used by Validate; Encode does not enforce the set (it
+// preserves whatever a decoded file contained), so the check lives only there.
 func validKind(val, a, b string) bool {
 	return val == "" || val == a || val == b
-}
-
-// kind validates a closed x-kind value and emits it when non-empty.
-func (w *objectWriter) kind(val, a, b, owner string) error {
-	if val == "" {
-		return nil
-	}
-	if !validKind(val, a, b) {
-		return fmt.Errorf("dcanvas: invalid %s x-kind %q (want %q or %q)", owner, val, a, b)
-	}
-	w.str("x-kind", val)
-	return nil
 }
 
 // bytes serialises the ordered known fields followed by the preserved unknown
@@ -292,12 +281,20 @@ func (c *Canvas) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON encodes a canvas, always stamping the current format version and
-// merging back any preserved unknown top-level fields. nodes and edges are
-// always emitted as arrays so the result is a clean JSON Canvas document.
+// MarshalJSON encodes a canvas, stamping the format version and merging back
+// any preserved unknown top-level fields. nodes and edges are always emitted as
+// arrays so the result is a clean JSON Canvas document.
+//
+// The decoded x-dCanvasVersion is preserved when its major matches the
+// library's, so a 3.1 file round-trips as 3.1; a canvas with no version
+// (hand-built) or a different major is stamped with the library Version.
 func (c *Canvas) MarshalJSON() ([]byte, error) {
 	var w objectWriter
-	w.str("x-dCanvasVersion", Version)
+	version := Version
+	if c.Version != "" && majorVersion(c.Version) == majorVersion(Version) {
+		version = c.Version
+	}
+	w.str("x-dCanvasVersion", version)
 
 	nodes := c.Nodes
 	if nodes == nil {
@@ -394,13 +391,19 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	_ = w.always("width", n.Width)
 	_ = w.always("height", n.Height)
 	w.str("color", n.Color)
-	w.str("text", n.Text)
-
-	// Layer 1 — optional dialogue vocabulary.
-	w.str("x-id", n.XID)
-	if err := w.kind(n.Kind, KindLine, KindReply, "node"); err != nil {
-		return nil, err
+	// The schema requires text on text-type nodes, so a text node always emits
+	// its text field (even when empty); other node types keep text optional.
+	if n.Type == "text" {
+		_ = w.always("text", n.Text)
+	} else {
+		w.str("text", n.Text)
 	}
+
+	// Layer 1 — optional dialogue vocabulary. x-kind is written verbatim; the
+	// closed-set check is Validate's job, not the writer's (a decoded file's
+	// value must round-trip even if unrecognised).
+	w.str("x-id", n.XID)
+	w.str("x-kind", n.Kind)
 	w.str("x-role", n.Role)
 	w.str("x-textId", n.TextID)
 	w.str("x-condition", n.Condition)
@@ -468,11 +471,10 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 	w.str("color", e.Color)
 	w.str("label", e.Label)
 
-	// Layer 1 — optional dialogue vocabulary.
+	// Layer 1 — optional dialogue vocabulary. x-kind is written verbatim (see
+	// Node.MarshalJSON); the closed-set check is Validate's job.
 	w.str("x-id", e.XID)
-	if err := w.kind(e.Kind, KindNormal, KindLoop, "edge"); err != nil {
-		return nil, err
-	}
+	w.str("x-kind", e.Kind)
 	w.str("x-role", e.Role)
 	w.str("x-condition", e.Condition)
 	w.str("x-textId", e.TextID)

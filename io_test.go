@@ -57,18 +57,48 @@ func TestDecode_VersionGate(t *testing.T) {
 	}
 }
 
-func TestEncode_StampsVersion(t *testing.T) {
-	// Even a canvas whose Version field says something else is stamped "3.0".
-	c := &Canvas{Version: "9.9"}
-	m := encodeToMap(t, c)
-	if got := m["x-dCanvasVersion"]; got != "3.0" {
-		t.Errorf("x-dCanvasVersion = %v, want \"3.0\"", got)
+func TestEncode_VersionContract(t *testing.T) {
+	// Encode preserves a decoded version whose major matches the library's, and
+	// otherwise stamps the library version.
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{"no version stamped with library version", "", Version},
+		{"same-major minor is preserved", "3.1", "3.1"},
+		{"different major replaced with library version", "9.9", Version},
 	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := encodeToMap(t, &Canvas{Version: tc.version})
+			if got := m["x-dCanvasVersion"]; got != tc.want {
+				t.Errorf("x-dCanvasVersion = %v, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestEncode_NodesEdgesAlwaysArrays(t *testing.T) {
+	m := encodeToMap(t, &Canvas{})
 	if _, ok := m["nodes"].([]any); !ok {
 		t.Errorf("nodes should be emitted as an array, got %T", m["nodes"])
 	}
 	if _, ok := m["edges"].([]any); !ok {
 		t.Errorf("edges should be emitted as an array, got %T", m["edges"])
+	}
+}
+
+func TestRoundTrip_PreservesMinorVersion(t *testing.T) {
+	// A 3.1 document must round-trip as 3.1, not be downgraded to the library's
+	// 3.0.
+	c, err := decodeString(t, `{"x-dCanvasVersion":"3.1","nodes":[],"edges":[]}`)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	m := encodeToMap(t, c)
+	if got := m["x-dCanvasVersion"]; got != "3.1" {
+		t.Errorf("x-dCanvasVersion = %v, want \"3.1\"", got)
 	}
 }
 
@@ -307,21 +337,29 @@ func TestEncode_KeyOrder(t *testing.T) {
 	}
 }
 
-func TestEncode_RejectsInvalidKind(t *testing.T) {
-	tests := []struct {
-		name   string
-		canvas *Canvas
-	}{
-		{"bad node kind", &Canvas{Nodes: []*Node{{ID: "n", Type: "text", Kind: "shout"}}}},
-		{"bad edge kind", &Canvas{Edges: []*Edge{{ID: "e", FromNode: "a", ToNode: "b", Kind: "weird"}}}},
+func TestRoundTrip_PreservesUnrecognisedKind(t *testing.T) {
+	// Encode no longer enforces the closed x-kind set (that is Validate's job),
+	// so a file whose x-kind the library does not recognise round-trips without
+	// error and keeps its value on the wire.
+	input := `{
+		"x-dCanvasVersion": "3.0",
+		"nodes": [{"id":"n","type":"text","x":0,"y":0,"width":400,"height":300,"text":"hi","x-kind":"shout"}],
+		"edges": [{"id":"e","fromNode":"n","toNode":"n","x-kind":"weird"}]
+	}`
+	c, err := decodeString(t, input)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			err := Encode(tc.canvas, &bytes.Buffer{})
-			if err == nil {
-				t.Fatal("expected an error for invalid x-kind, got nil")
-			}
-		})
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode should not reject an unrecognised x-kind: %v", err)
+	}
+	m := encodeToMap(t, c)
+	if got := m["nodes"].([]any)[0].(map[string]any)["x-kind"]; got != "shout" {
+		t.Errorf("node x-kind = %v, want \"shout\"", got)
+	}
+	if got := m["edges"].([]any)[0].(map[string]any)["x-kind"]; got != "weird" {
+		t.Errorf("edge x-kind = %v, want \"weird\"", got)
 	}
 }
 

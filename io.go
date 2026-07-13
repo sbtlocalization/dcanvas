@@ -34,10 +34,16 @@ func Decode(r io.Reader) (*Canvas, error) {
 	if c.Version == "" {
 		return nil, fmt.Errorf("can't decode dcanvas: missing x-dCanvasVersion")
 	}
-	major, _, _ := strings.Cut(c.Version, ".")
-	want, _, _ := strings.Cut(Version, ".")
-	if major != want {
-		return nil, fmt.Errorf("can't decode dcanvas: unsupported major version %q (want %s.x)", c.Version, want)
+	if majorVersion(c.Version) != majorVersion(Version) {
+		return nil, fmt.Errorf("can't decode dcanvas: unsupported major version %q (want %s.x)", c.Version, majorVersion(Version))
 	}
 	return &c, nil
+}
+
+// majorVersion returns the major component of a dotted version string ("3.1" →
+// "3"). It is the single definition of "same major" shared by Decode's version
+// gate and Encode's version-preservation rule.
+func majorVersion(v string) string {
+	major, _, _ := strings.Cut(v, ".")
+	return major
 }

@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0012 - Validate API for structural checks over a canvas]]"
@@ -95,8 +95,8 @@ Two fixes:
 
 # Acceptance criteria
 
-- [ ] A `3.1` document round-trips (`Decode` → `Encode`) with `x-dCanvasVersion` still `3.1`.
-- [ ] A hand-built canvas with no version is stamped with the library version; a different-major value is replaced with the library version.
-- [ ] A document whose `x-kind` the library does not recognise round-trips without `Encode` returning an error.
-- [ ] The closed-set `x-kind` check remains available via `Validate`.
-- [ ] The previous always-stamp-`3.0` test is updated to the new contract; `go test ./...` passes.
+- [x] A `3.1` document round-trips (`Decode` → `Encode`) with `x-dCanvasVersion` still `3.1`.
+- [x] A hand-built canvas with no version is stamped with the library version; a different-major value is replaced with the library version.
+- [x] A document whose `x-kind` the library does not recognise round-trips without `Encode` returning an error.
+- [x] The closed-set `x-kind` check remains available via `Validate`.
+- [x] The previous always-stamp-`3.0` test is updated to the new contract; `go test ./...` passes.

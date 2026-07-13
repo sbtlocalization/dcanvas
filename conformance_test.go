@@ -96,6 +96,17 @@ func TestConformance_EncodedOutputValidatesAgainstSchema(t *testing.T) {
 			name:   "minimal complete document",
 			canvas: &Canvas{},
 		},
+		{
+			// The schema requires text on text-type nodes. A text node with empty
+			// text must still emit a (possibly empty) text field so the output
+			// conforms — see task 0007. Before that fix this case is red.
+			name: "text node with empty text still conforms",
+			canvas: &Canvas{
+				Nodes: []*Node{
+					{ID: "n1", Type: "text", X: 0, Y: 0, Width: 400, Height: 300},
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {

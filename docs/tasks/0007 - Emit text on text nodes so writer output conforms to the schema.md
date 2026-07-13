@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0003 - JSON Schema as cross-language contract and writer conformance]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0006 - Conformance harness validating writer output against the JSON Schema]]"
@@ -94,8 +94,8 @@ If the conformance harness surfaces any further divergences, fix them the same w
 
 # Acceptance criteria
 
-- [ ] A red test demonstrates that, before the fix, a `text` node with empty text encodes to a document that fails schema validation.
-- [ ] After the fix, a `text`-type node always emits a `text` field; the same test passes.
-- [ ] `group` / `file` / `link` nodes are not forced to emit `text`.
-- [ ] The existing "stripped is valid JSON Canvas" and key-order tests still pass.
-- [ ] `go test ./...` passes.
+- [x] A red test demonstrates that, before the fix, a `text` node with empty text encodes to a document that fails schema validation.
+- [x] After the fix, a `text`-type node always emits a `text` field; the same test passes.
+- [x] `group` / `file` / `link` nodes are not forced to emit `text`.
+- [x] The existing "stripped is valid JSON Canvas" and key-order tests still pass.
+- [x] `go test ./...` passes.
