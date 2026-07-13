@@ -309,6 +309,22 @@ func (c *Canvas) MarshalJSON() ([]byte, error) {
 	return w.bytes(c.extra), nil
 }
 
+// SetExtra attaches a Layer 2 (project-specific) field to the node by
+// JSON-marshaling val. It is preserved verbatim on encode and survives a
+// round-trip through Decode, the same as any other unrecognised field; a
+// typed field with the same key always wins.
+func (n *Node) SetExtra(key string, val any) error {
+	b, err := json.Marshal(val)
+	if err != nil {
+		return fmt.Errorf("dcanvas: field %q: %w", key, err)
+	}
+	if n.extra == nil {
+		n.extra = make(map[string]json.RawMessage)
+	}
+	n.extra[key] = b
+	return nil
+}
+
 // --- Node IO ----------------------------------------------------------------
 
 // UnmarshalJSON decodes a node, keeping any unrecognised field (including

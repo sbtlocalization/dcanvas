@@ -15,19 +15,25 @@ filters:
 formulas:
   is_blocked: |-
     note["blocked by"].reduce(
-      value.asFile().properties.status != "Done" || acc,
+      acc || (
+        value.asFile().properties.status != "Done" && 
+        value.asFile().properties.status != "Obsolete"
+      ),
       false
     )
   progress_icon: |-
     if(status == "Done",
       icon("square-check-big"),
-      if(formula.is_blocked,
-        icon("construction"), 
-        icon("square")
+      if (status == "Obsolete",
+        icon("square-arrow-right"),
+        if(formula.is_blocked,
+          icon("construction"), 
+          icon("square")
+        )
       )
     )
   progress_sort: |-
-    if(status == "Done", 
+    if(status == "Done" || status == "Obsolete", 
       20, 
       if(formula.is_blocked, 
         10, 
@@ -35,7 +41,7 @@ formulas:
           5, 
           0)))
   progress_string: |-
-    if(status == "Done", 
+    if(status == "Done" || status == "Obsolete", 
       "Done", 
       if(formula.is_blocked, 
         "On hold",
@@ -70,6 +76,7 @@ views:
       - formula.priority
       - status
       - blocked by
+      - mode
     sort:
       - property: formula.progress_sort
         direction: ASC
@@ -81,8 +88,9 @@ views:
     columnSize:
       formula.progress_icon: -56
       formula.kind_icon: -1
-      file.name: 325
+      file.name: 435
       note.status: 125
+      note.blocked by: 627
 
 ```
 <!-- end unchanged block -->

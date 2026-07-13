@@ -325,6 +325,36 @@ func TestEncode_RejectsInvalidKind(t *testing.T) {
 	}
 }
 
+func TestNode_SetExtra(t *testing.T) {
+	c := &Canvas{
+		Nodes: []*Node{{ID: "n", Type: "text", Text: "hi"}},
+	}
+	if err := c.Nodes[0].SetExtra("x-journalText", "The Captive Nymph"); err != nil {
+		t.Fatalf("SetExtra: %v", err)
+	}
+
+	m := encodeToMap(t, c)
+	node := m["nodes"].([]any)[0].(map[string]any)
+	if node["x-journalText"] != "The Captive Nymph" {
+		t.Errorf("node[\"x-journalText\"] = %v, want \"The Captive Nymph\"", node["x-journalText"])
+	}
+
+	// Round-trips through Decode like any other unknown field.
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	c2, err := Decode(&buf)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	m2 := encodeToMap(t, c2)
+	node2 := m2["nodes"].([]any)[0].(map[string]any)
+	if node2["x-journalText"] != "The Captive Nymph" {
+		t.Errorf("after round-trip, node[\"x-journalText\"] = %v", node2["x-journalText"])
+	}
+}
+
 func TestEncode_AcceptsValidKinds(t *testing.T) {
 	c := &Canvas{
 		Nodes: []*Node{{ID: "n", Type: "text", Kind: KindReply, Text: "ok"}},
