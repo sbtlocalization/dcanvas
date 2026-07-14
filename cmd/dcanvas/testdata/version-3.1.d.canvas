@@ -1,0 +1,10 @@
+{
+	"x-dCanvasVersion": "3.1",
+	"nodes": [
+		{"id": "a", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "Start", "x-kind": "line"},
+		{"id": "b", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "End", "x-kind": "reply"}
+	],
+	"edges": [
+		{"id": "e1", "fromNode": "a", "toNode": "b", "x-kind": "normal"}
+	]
+}

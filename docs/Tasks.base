@@ -34,6 +34,7 @@ views:
       - file.ctime
     columnSize:
       file.name: 408
+      note.blocked by: 533
   - type: table
     name: all
     order:

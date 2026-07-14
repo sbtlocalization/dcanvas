@@ -38,6 +38,17 @@ The format problem that triggered the 3.0 redesign: the old format baked engine-
 - **`x-action`** — engine action executed at a node.
 - **`x-textId`** — string-table reference for the visible text (`node.text` or `edge.label`).
 
+## Consumers
+
+The format is consumed across two languages with a one-directional flow (writer → file → reader).
+
+- **Writer** — a Go tool that *generates* `.d.canvas` files via the Go reference library. Write-only.
+  _Avoid_: exporter, producer.
+- **Reader** — a TypeScript + Svelte tool that *opens and displays* `.d.canvas` files. Read-only; consumes the JSON Schema, never the Go library.
+  _Avoid_: viewer, consumer (ambiguous — every tool is a "consumer" of the format).
+- **CLI** — a Go command-line/TUI tool (in `cmd/`) that *operates* on `.d.canvas` files: reads a file, performs an operation (first: auto-layout), and writes it back. The only tool that round-trips (read → operate → write). See [[ADR-0011 - An in-repo reference CLI is a round-tripping consumer and the layout engine stays swappable|ADR-0011]].
+- **Master spec** — this repository: the canonical source of the format (spec, JSON Schema, Go reference library). The cross-language contract is the **JSON Schema**, not the library (see [[ADR-0010 - The JSON Schema is the cross-language contract enforced by writer conformance|ADR-0010]]).
+
 ## Invariants
 
 1. **Visible text lives in standard fields.** Character/player speech → `node.text`; player choice → `edge.label`. Never encode metadata inside `text`. This is what keeps Obsidian rendering correct.
@@ -47,5 +58,5 @@ The format problem that triggered the 3.0 redesign: the old format baked engine-
 ## Status & roadmap
 
 - **dCanvas 2.0 is deprecated.** 3.0 is a clean redesign; no migration code.
-- The format and its Go **reference implementation** will move to a **separate repository** when a second consumer exists to validate it (see [[ADR-0008 - Extract format and library to a separate repository|ADR-0008]]).
-- This `sbt-infinity` tool still emits 2.0 today; porting it to 3.0 (the natural acceptance test of the format) is planned but not yet done. Until then this `dcanvas/` package and its docs are the staging area.
+- The format now lives in its **own repository** — this one is the canonical master spec ([[ADR-0008 - Extract format and library to a separate repository|ADR-0008]]'s "Later" stage, fulfilled by [[ADR-0010 - The JSON Schema is the cross-language contract enforced by writer conformance|ADR-0010]]). The second consumer that triggered the move is the TypeScript reader.
+- A Go writer and a TS+Svelte reader are the two live consumers; neither round-trips. Unknown-field preservation is exercised only via the Obsidian round-trip path.

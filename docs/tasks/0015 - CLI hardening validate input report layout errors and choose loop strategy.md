@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0002 - dCanvas CLI TUI and round-trip library robustness]]"
 parent:
-status: To do
+status: Done
 priority: 2
 blocked by:
   - "[[0011 - CLI walking skeleton lay out a file end-to-end]]"
@@ -98,9 +98,9 @@ Harden the CLI now that the library pieces exist: turn the walking skeleton into
 
 # Acceptance criteria
 
-- [ ] Running on an invalid file (dangling edge, duplicate id, missing required field) prints the problem, exits non-zero, and writes no output.
-- [ ] A layout failure is reported with a non-zero exit; success writes the laid-out file.
-- [ ] `--loop cut` (default) and `--loop dfs` change the layout behaviour accordingly.
-- [ ] The output preserves the input's `x-dCanvasVersion` and untouched fields.
-- [ ] Tests drive the CLI for the invalid-input, layout-failure, and both loop-strategy paths.
-- [ ] `go test ./...` passes.
+- [x] Running on an invalid file (dangling edge, duplicate id, missing required field) prints the problem, exits non-zero, and writes no output.
+- [x] A layout failure is reported with a non-zero exit; success writes the laid-out file.
+- [x] `--loop cut` (default) and `--loop dfs` change the layout behaviour accordingly.
+- [x] The output preserves the input's `x-dCanvasVersion` and untouched fields.
+- [x] Tests drive the CLI for the invalid-input, layout-failure, and both loop-strategy paths.
+- [x] `go test ./...` passes.

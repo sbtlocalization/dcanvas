@@ -6,29 +6,61 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/sbtlocalization/dcanvas"
 	"github.com/sbtlocalization/dcanvas/layout"
 )
 
-// runLayout reads the input canvas, lays it out with the default strategy
-// (LoopCut), and writes it back. Without -o it overwrites the input in place.
-func runLayout(args []string) error {
-	fs := flag.NewFlagSet("layout", flag.ContinueOnError)
-	out := fs.String("o", "", "output file (default: overwrite the input)")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
-		return fmt.Errorf("layout: expected exactly one input file\n%s", usage)
+// layoutFn is the layout entry point, indirected through a variable so a test
+// can substitute a failing layout and exercise the CLI's failure-reporting path
+// (the engine does not fail deterministically on any craftable input).
+var layoutFn = layout.Layout
+
+// newLayoutCmd builds the `dcanvas layout` command.
+func newLayoutCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "layout <input>",
+		Short: "Auto-layout a canvas and write it back",
+		Long: `Read a .d.canvas (or .dcanvas) file, validate it, assign node positions
+with the chosen loop strategy, and write the result back.
+
+Without -o the input file is overwritten in place. The input's version and any
+fields the tool does not touch (including Layer 2 project fields) are preserved.`,
+		Example: `  Lay out a file in place:
+    dcanvas layout dialogue.d.canvas
+
+  Write to a separate file, keeping loop edges in the graph:
+    dcanvas layout --loop dfs -o out.d.canvas dialogue.d.canvas`,
+		Args: cobra.ExactArgs(1),
+		RunE: runLayout,
 	}
 
-	in := fs.Arg(0)
+	cmd.Flags().StringP("output", "o", "", "output file `path` (default: overwrite the input)")
+	cmd.Flags().String("loop", "cut", "loop-edge strategy: cut or dfs")
+	cmd.MarkFlagFilename("output", "d.canvas", "dcanvas")
+
+	return cmd
+}
+
+// runLayout reads the input canvas, validates it, lays it out with the chosen
+// strategy, and writes it back. It fails loudly and writes no output when the
+// input is invalid or layout fails.
+func runLayout(cmd *cobra.Command, args []string) error {
+	output, _ := cmd.Flags().GetString("output")
+	loop, _ := cmd.Flags().GetString("loop")
+
+	strategy, err := loopStrategy(loop)
+	if err != nil {
+		return err
+	}
+
+	in := args[0]
 	if err := checkExt(in); err != nil {
 		return err
 	}
@@ -38,15 +70,32 @@ func runLayout(args []string) error {
 		return err
 	}
 
-	if err := layout.Layout(c); err != nil {
+	// Validate before operating: refuse an unusable file and write nothing.
+	if err := dcanvas.Validate(c); err != nil {
+		return fmt.Errorf("invalid canvas %s:\n%w", in, err)
+	}
+
+	if err := layoutFn(c, layout.WithLoopStrategy(strategy)); err != nil {
 		return fmt.Errorf("layout %s: %w", in, err)
 	}
 
-	dst := *out
+	dst := output
 	if dst == "" {
 		dst = in
 	}
 	return writeCanvas(dst, c)
+}
+
+// loopStrategy maps the --loop flag value to a layout strategy.
+func loopStrategy(v string) (layout.LoopStrategy, error) {
+	switch v {
+	case "cut":
+		return layout.LoopCut, nil
+	case "dfs":
+		return layout.LoopDFS, nil
+	default:
+		return layout.LoopCut, fmt.Errorf("unknown --loop %q (want \"cut\" or \"dfs\")", v)
+	}
 }
 
 // acceptedExts are the format's file extensions: the default .d.canvas and the
