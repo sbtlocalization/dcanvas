@@ -1,5 +1,5 @@
 ---
-status: Backlog
+status: In progress
 priority: 4
 blocked by:
 kind: PRD
@@ -25,7 +25,7 @@ formulas:
     if(status == "Done",
       icon("square-check-big"),
       if (status == "Obsolete",
-	    icon("square-arrow-right"),
+        icon("square-arrow-right"),
         if(formula.is_blocked,
           icon("construction"), 
           icon("square")
@@ -88,9 +88,10 @@ views:
     columnSize:
       formula.progress_icon: -56
       formula.kind_icon: -1
-      file.name: 435
+      file.name: 609
       note.status: 125
       note.blocked by: 522
+
 ```
 <!-- end unchanged block -->
 
@@ -122,7 +123,7 @@ Building the CLI is the acceptance test that hardens the library's round-trip pa
 5. As a dialogue author, I want the CLI to report an error when layout could not be computed, so that I never get a "done" that did nothing.
 6. As a dialogue author, I want to choose the loop-handling strategy (`LoopCut` default, `LoopDFS`) from the command line, so that cyclic dialogues lay out the way I expect.
 7. As a dialogue author, I want the CLI to accept both `.d.canvas` and `.dcanvas` files, so that either naming works.
-8. As a dialogue author, I want a TUI mode to preview the graph before writing, so that I can eyeball the layout.
+8. As a dialogue author, I want a read-only TUI to browse the dialogue as a navigable tree of connected utterances, so that I can read who says what and how choices branch (a content browser, not a layout preview — see [[0016 - CLI view read-only TUI dialogue browser|task 0016]]).
 9. As a CLI consumer of the library, I want to read a canvas, mutate only geometry, and write it back without the write step ever rejecting data the read step accepted, so that round-trip is lossless.
 10. As a CLI consumer of the library, I want a `Validate` call that reports structural problems (id uniqueness, edge endpoint existence, closed-set `x-kind`, required fields), so that I can gate an operation on a valid input.
 11. As a CLI consumer of the library, I want `Layout` to return an error rather than silently recovering, so that I can surface it.
@@ -152,7 +153,7 @@ Building the CLI is the acceptance test that hardens the library's round-trip pa
 - **A reader accessor for Layer 2 fields** (`Extra` getter) and `SetExtra` symmetry on edges/canvas/character — only warranted once a CLI operation needs to *inspect or edit* project fields. Auto-layout does not; it only preserves them. Deferred until an operation pulls the need.
 - **A pluggable `LayoutEngine` interface** — deferred until a second engine exists; engine-neutral API + quarantine suffice now.
 - **Operations beyond auto-layout** — layout is the tracer bullet; further operations are separate work.
-- **Semver release tagging / `go get` versioning** — during co-development the CLI and library live in one module; tagging is deferred (see [[EPIC-0003 - JSON Schema as cross-language contract and writer conformance|EPIC-0003]] notes).
+- **Semver release tagging / `go get` versioning** — tagging the two modules for external consumption is deferred (see [[EPIC-0003 - JSON Schema as cross-language contract and writer conformance|EPIC-0003]] notes). *(The CLI and library have since been split into two Go modules bound by a committed `go.work` — see [[ADR-0012 - The reference CLI is a separate Go module|ADR-0012]]; only release tagging remains deferred.)*
 - **The JSON-Schema conformance test and the schema `$id`** — owned by [[EPIC-0003 - JSON Schema as cross-language contract and writer conformance|EPIC-0003]].
 
 # Further Notes
