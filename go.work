@@ -1,0 +1,14 @@
+// SPDX-FileCopyrightText: © 2026 SBT Localization https://sbt.localization.com.ua
+// SPDX-FileContributor: Serhii Olendarenko <sergey.olendarenko@gmail.com>
+//
+// SPDX-License-Identifier: BlueOak-1.0.0
+
+// This workspace binds the two Go modules of this repository during
+// co-development so in-repo builds resolve the library locally, without a
+// replace directive (see ADR-0012). A library consumer never sees this file.
+go 1.25.0
+
+use (
+	.
+	./cmd/dcanvas
+)

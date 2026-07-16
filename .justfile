@@ -25,21 +25,25 @@ run *args:
 install:
     go install {{cmd}}
 
-# Run the whole test suite.
+# Run the whole test suite. The repo is two Go modules (ADR-0012); a root
+# ./... does not descend into the nested CLI module, so each is run explicitly.
 test:
-    go test ./...
+    go test -C . ./...
+    go test -C cmd/dcanvas ./...
 
 # Run the tests verbosely.
 test-v:
-    go test -v ./...
+    go test -C . -v ./...
+    go test -C cmd/dcanvas -v ./...
 
 # Regenerate the CLI golden test fixture.
 update-golden:
-    go test ./cmd/dcanvas/ -run TestLayoutCLI_Golden -update
+    go test -C cmd/dcanvas ./ -run TestLayoutCLI_Golden -update
 
-# Vet all packages.
+# Vet all packages across both modules.
 vet:
-    go vet ./...
+    go vet -C . ./...
+    go vet -C cmd/dcanvas ./...
 
 # Format all Go source in place.
 fmt:

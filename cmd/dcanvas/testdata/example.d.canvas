@@ -1,0 +1,76 @@
+{
+	"x-dCanvasVersion":"3.0",
+	"nodes":[
+		{
+			"id":"n-greet",
+			"type":"text",
+			"x":0,
+			"y":0,
+			"width":420,
+			"height":200,
+			"color":"3",
+			"text":"Why do you disturb my grove, mortal?",
+			"x-id":"n-greet",
+			"x-kind":"line",
+			"x-role":"state",
+			"x-character":{"name":"Abela the Nymph","portrait":"None.png","gender":"female"}
+		},
+		{"id":"n-seek","type":"text","x":40,"y":400,"width":340,"height":120,"color":"4","text":"I seek the captive nymph Ragefast holds.","x-id":"n-seek","x-kind":"reply","x-role":"transition"},
+		{"id":"n-pass","type":"text","x":520,"y":400,"width":340,"height":120,"color":"4","text":"Just passing through. Forgive me.","x-id":"n-pass","x-kind":"reply","x-role":"transition"},
+		{
+			"id":"n-reveal",
+			"type":"text",
+			"x":0,
+			"y":720,
+			"width":420,
+			"height":200,
+			"color":"3",
+			"text":"Ah — his prisoner. I am she. Will you help me, or gawk like the rest?",
+			"x-id":"n-reveal",
+			"x-kind":"line",
+			"x-role":"state",
+			"x-character":{"name":"Abela the Nymph","portrait":"None.png","gender":"female"}
+		},
+		{"id":"n-free","type":"text","x":40,"y":1120,"width":340,"height":120,"color":"4","text":"Let me free you.","x-id":"n-free","x-kind":"reply","x-role":"transition"},
+		{"id":"n-leave","type":"text","x":520,"y":1120,"width":340,"height":120,"color":"4","text":"This is no business of mine.","x-id":"n-leave","x-kind":"reply","x-role":"transition"},
+		{
+			"id":"n-thanks",
+			"type":"text",
+			"x":0,
+			"y":1440,
+			"width":420,
+			"height":200,
+			"color":"3",
+			"text":"Be free, then. The grove remembers a kindness.",
+			"x-id":"n-thanks",
+			"x-kind":"line",
+			"x-role":"state",
+			"x-character":{"name":"Abela the Nymph","portrait":"None.png","gender":"female"}
+		},
+		{
+			"id":"n-scorn",
+			"type":"text",
+			"x":480,
+			"y":1440,
+			"width":420,
+			"height":200,
+			"color":"3",
+			"text":"Then begone, and trouble me no further.",
+			"x-id":"n-scorn",
+			"x-kind":"line",
+			"x-role":"state",
+			"x-character":{"name":"Abela the Nymph","portrait":"None.png","gender":"female"}
+		}
+	],
+	"edges":[
+		{"id":"e1","fromNode":"n-greet","fromSide":"bottom","toNode":"n-seek","toSide":"top","toEnd":"arrow","label":"I seek the captive nymph.","x-id":"e1","x-kind":"normal","x-role":"paraphrase"},
+		{"id":"e2","fromNode":"n-greet","fromSide":"bottom","toNode":"n-pass","toSide":"top","toEnd":"arrow","label":"Just passing through.","x-id":"e2","x-kind":"normal","x-role":"paraphrase"},
+		{"id":"e3","fromNode":"n-seek","fromSide":"bottom","toNode":"n-reveal","toSide":"top","toEnd":"arrow","x-id":"e3","x-kind":"normal","x-role":"paraphrase"},
+		{"id":"e4","fromNode":"n-reveal","fromSide":"bottom","toNode":"n-free","toSide":"top","toEnd":"arrow","label":"Let me free you.","x-id":"e4","x-kind":"normal","x-role":"paraphrase"},
+		{"id":"e5","fromNode":"n-reveal","fromSide":"bottom","toNode":"n-leave","toSide":"top","toEnd":"arrow","label":"Not my business.","x-id":"e5","x-kind":"normal","x-role":"paraphrase"},
+		{"id":"e6","fromNode":"n-free","fromSide":"bottom","toNode":"n-thanks","toSide":"top","toEnd":"arrow","x-id":"e6","x-kind":"normal","x-role":"paraphrase"},
+		{"id":"e7","fromNode":"n-leave","fromSide":"bottom","toNode":"n-scorn","toSide":"top","toEnd":"arrow","x-id":"e7","x-kind":"normal","x-role":"paraphrase"},
+		{"id":"e8","fromNode":"n-pass","fromSide":"bottom","toNode":"n-greet","toSide":"top","toEnd":"arrow","color":"1","label":"(reconsider)","x-id":"e8","x-kind":"loop","x-role":"paraphrase"},
+		{"id":"e9","fromNode":"n-scorn","fromSide":"bottom","toNode":"n-greet","toSide":"top","toEnd":"arrow","color":"1","label":"(she calls you back)","x-id":"e9","x-kind":"loop","x-role":"paraphrase"}
+	]
+}

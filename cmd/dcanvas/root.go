@@ -19,5 +19,6 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: false,
 	}
 	root.AddCommand(newLayoutCmd())
+	root.AddCommand(newViewCmd())
 	return root
 }
