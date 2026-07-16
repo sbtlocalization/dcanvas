@@ -64,11 +64,6 @@ func TestValidate_Failures(t *testing.T) {
 			wantSub: []string{"e1", "weird"},
 		},
 		{
-			name:    "text node without text",
-			mutate:  func(c *Canvas) { c.Nodes[0].Text = "" },
-			wantSub: []string{"n1", "text"},
-		},
-		{
 			name:    "x-character without name",
 			mutate:  func(c *Canvas) { c.Nodes[0].Character.Name = "" },
 			wantSub: []string{"n1", "name"},
@@ -89,6 +84,20 @@ func TestValidate_Failures(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestValidate_EmptyTextIsValid pins the rule that an empty text on a text node
+// is valid: the format requires the text field to be present, not non-empty. A
+// terminal "end of dialogue" node legitimately carries no spoken line.
+func TestValidate_EmptyTextIsValid(t *testing.T) {
+	c := wellFormed()
+	c.Nodes = append(c.Nodes, &Node{
+		ID: "end", Type: "text", Width: 400, Height: 300, Text: "",
+		Character: &Character{Name: "End dialog"},
+	})
+	if err := Validate(c); err != nil {
+		t.Fatalf("a text node with empty text should validate, got: %v", err)
 	}
 }
 

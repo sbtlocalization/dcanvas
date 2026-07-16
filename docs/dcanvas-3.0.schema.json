@@ -79,13 +79,20 @@
         "x-sound": { "type": "string", "description": "Sound resource for this node's spoken line." },
         "x-character": { "$ref": "#/definitions/character" }
       },
-      "if": {
-        "properties": { "type": { "const": "text" } },
-        "required": ["type"]
-      },
-      "then": {
-        "required": ["id", "type", "x", "y", "width", "height", "text"]
-      }
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "text" } }, "required": ["type"] },
+          "then": { "required": ["id", "type", "x", "y", "width", "height", "text"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "file" } }, "required": ["type"] },
+          "then": { "required": ["id", "type", "x", "y", "width", "height", "file"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "link" } }, "required": ["type"] },
+          "then": { "required": ["id", "type", "x", "y", "width", "height", "url"] }
+        }
+      ]
     },
     "edge": {
       "type": "object",

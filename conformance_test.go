@@ -123,3 +123,41 @@ func TestConformance_EncodedOutputValidatesAgainstSchema(t *testing.T) {
 		})
 	}
 }
+
+// TestConformance_FileAndLinkInheritRequiredFields verifies that dCanvas keeps
+// JSON Canvas 1.0's required fields for the node types it does not redefine: a
+// file node MUST carry file, a link node MUST carry url. dCanvas does not use
+// these node types, so it inherits them wholesale rather than relaxing them.
+// The cases run raw JSON against the schema (the typed API models neither
+// field), asserting both directions: present passes, absent is rejected.
+func TestConformance_FileAndLinkInheritRequiredFields(t *testing.T) {
+	schema := compileSchema(t)
+
+	const geom = `"x":0,"y":0,"width":400,"height":300`
+	cases := []struct {
+		name     string
+		node     string
+		wantPass bool
+	}{
+		{"file node with file", `{"id":"n","type":"file",` + geom + `,"file":"a.png"}`, true},
+		{"file node without file", `{"id":"n","type":"file",` + geom + `}`, false},
+		{"link node with url", `{"id":"n","type":"link",` + geom + `,"url":"https://x"}`, true},
+		{"link node without url", `{"id":"n","type":"link",` + geom + `}`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := `{"x-dCanvasVersion":"3.0","nodes":[` + tc.node + `]}`
+			var instance any
+			if err := json.Unmarshal([]byte(doc), &instance); err != nil {
+				t.Fatalf("parse instance: %v", err)
+			}
+			err := schema.Validate(instance)
+			if tc.wantPass && err != nil {
+				t.Errorf("expected the document to conform, got: %v", err)
+			}
+			if !tc.wantPass && err == nil {
+				t.Errorf("expected the document to be rejected, but it validated:\n%s", doc)
+			}
+		})
+	}
+}

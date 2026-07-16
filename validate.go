@@ -20,7 +20,14 @@ import (
 //   - every edge fromNode/toNode references an existing node id;
 //   - x-kind values stay within their closed sets (nodes: line/reply; edges:
 //     normal/loop);
-//   - required fields are present: text on text-type nodes, name on x-character.
+//   - required fields are present: name on x-character.
+//
+// It deliberately does not check that a text node's text is non-empty: neither
+// JSON Canvas 1.0 nor dCanvas requires text to be non-empty (only present), and
+// an empty string is a legitimate value — e.g. a terminal "end of dialogue"
+// node carries no spoken line. Presence of the text field itself is a per-node
+// invariant the JSON Schema already expresses and Encode already guarantees, so
+// it is not re-checked here.
 //
 // All problems found are collected and returned as a single joined error, so a
 // caller sees every issue in one pass; a well-formed canvas returns nil. This
@@ -41,10 +48,6 @@ func Validate(c *Canvas) error {
 		if !validKind(n.Kind, KindLine, KindReply) {
 			problems = append(problems, fmt.Errorf(
 				"dcanvas: node %q has invalid x-kind %q (want %q or %q)", n.ID, n.Kind, KindLine, KindReply))
-		}
-		if n.Type == "text" && n.Text == "" {
-			problems = append(problems, fmt.Errorf(
-				"dcanvas: node %q of type %q is missing required text", n.ID, n.Type))
 		}
 		if n.Character != nil && n.Character.Name == "" {
 			problems = append(problems, fmt.Errorf(
