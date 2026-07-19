@@ -84,7 +84,7 @@ dCanvas (**d**ialogue **canvas**) — це надбудова над [JSON Canva
 ```
 
 Так міг би виглядати цей діалог у програмі для перегляду:
-![[readme-example.png]]
+![example](./images/readme-example.png)
 ## Специфікація
 
 - [Специфікація dCanvas 1.0](spec/dCanvas-1.0.md)

@@ -84,7 +84,7 @@ A guard won't let the player into the city. The player has four replies: three l
 ```
 
 This is how this dialog could look like in a viewer application:
-![[readme-example.png]]
+![example](./images/readme-example.png)
 ## Specification
 
 - [dCanvas 1.0 specification](spec/dCanvas-1.0.md)
