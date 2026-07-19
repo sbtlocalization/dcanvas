@@ -1,0 +1,31 @@
+version = 1
+
+[[annotations]]
+path = ["spec/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "© 2026 SBT Localization https://sbt.localization.com.ua"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
+path = ["spec/JSON-Canvas-1.0.md"]
+precedence = "override"
+SPDX-FileCopyrightText = "(c) 2024 Obsidian.md"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = ["docs/**", "AGENTS.md", "CLAUDE.md", "CONTEXT.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "© 2026 SBT Localization https://sbt.localization.com.ua"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
+path = ["**/*.sum"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "© 2026 SBT Localization https://sbt.localization.com.ua"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
+path = ["**/testdata/*.d.canvas"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "© 2026 SBT Localization https://sbt.localization.com.ua"
+SPDX-License-Identifier = "BlueOak-1.0.0"

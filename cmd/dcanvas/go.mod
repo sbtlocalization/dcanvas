@@ -1,3 +1,8 @@
+// SPDX-FileCopyrightText: © 2026 SBT Localization https://sbt.localization.com.ua
+// SPDX-FileContributor: Serhii Olendarenko <sergey.olendarenko@gmail.com>
+//
+// SPDX-License-Identifier: BlueOak-1.0.0
+
 module github.com/sbtlocalization/dcanvas/cmd/dcanvas
 
 go 1.25.0

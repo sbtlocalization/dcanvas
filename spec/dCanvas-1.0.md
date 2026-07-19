@@ -1,6 +1,12 @@
+<!-- 
+SPDX-FileCopyrightText: © 2026 SBT Localization https://sbt.localization.com.ua
+SPDX-FileContributor: Serhii Olendarenko <sergey.olendarenko@gmail.com>
+SPDX-License-Identifier: BlueOak-1.0.0 
+-->
+
 # dCanvas Spec
 
-<small>Version 1.0 — 2026-07-18</small>
+<small>Version 1.0 (draft) — 2026-07-19</small>
 
 ## Overview
 
