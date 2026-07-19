@@ -19,6 +19,12 @@ SPDX-FileCopyrightText = "© 2026 SBT Localization https://sbt.localization.com.
 SPDX-License-Identifier = "BlueOak-1.0.0"
 
 [[annotations]]
+path = ["docs/**/*.base"]
+precedence = "override"
+SPDX-FileCopyrightText = "© Serhii Olendarenko"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
 path = ["**/*.sum"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "© 2026 SBT Localization https://sbt.localization.com.ua"
