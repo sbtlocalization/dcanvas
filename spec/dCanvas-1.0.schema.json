@@ -1,15 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/sbtlocalization/dcanvas/docs/dcanvas-3.0.schema.json",
-  "title": "dCanvas 3.0",
-  "description": "Dialogue Canvas format v3.0 — a strict superset of JSON Canvas 1.0 with x- extension fields for dialogue metadata. Implementations MUST preserve unrecognised fields on round-trip, recursively.",
+  "$id": "https://github.com/sbtlocalization/dcanvas/spec/dCanvas-1.0.schema.json",
+  "title": "dCanvas 1.0",
+  "description": "Dialogue Canvas format v1.0 — a strict superset of JSON Canvas 1.0. The d- prefix is reserved for the dCanvas vocabulary (unknown d- fields are reserved for future format versions); the x- prefix is the conventional home of project extensions. Implementations MUST preserve unrecognised fields on round-trip, recursively, regardless of prefix.",
   "type": "object",
-  "required": ["x-dCanvasVersion"],
+  "required": ["d-version"],
   "additionalProperties": true,
   "properties": {
-    "x-dCanvasVersion": {
+    "d-version": {
       "type": "string",
-      "const": "3.0",
+      "const": "1.0",
       "description": "Format version identifier. Major version governs compatibility."
     },
     "nodes": {
@@ -46,13 +46,13 @@
       "additionalProperties": true,
       "properties": {
         "name": { "type": "string", "description": "Character display name." },
-        "portrait": { "type": "string", "description": "Portrait image filename. Empty string or \"None.png\" means no portrait." },
+        "portrait": { "type": "string", "description": "Portrait image filename. Absent or empty means no portrait." },
         "gender": { "type": "string", "description": "Speaker gender (project-defined vocabulary)." }
       }
     },
     "node": {
       "type": "object",
-      "description": "A canvas node. Only text-type nodes carry dialogue semantics; a text node with x-kind is a dialogue node, otherwise a plain annotation. Unknown fields MUST be preserved.",
+      "description": "A canvas node. Only text-type nodes carry dialogue semantics; a text node with d-kind is a dialogue node, otherwise a plain annotation. Unknown fields MUST be preserved.",
       "required": ["id", "type", "x", "y", "width", "height"],
       "additionalProperties": true,
       "properties": {
@@ -63,21 +63,21 @@
         "width": { "type": "integer", "description": "Width in pixels." },
         "height": { "type": "integer", "description": "Height in pixels." },
         "color": { "$ref": "#/definitions/canvasColor" },
-        "text": { "type": "string", "description": "Spoken content of the node. For a line node, what the character says; for a reply node, what the player says. Clean text only." },
+        "text": { "type": "string", "description": "Spoken content of the node, as literal text. For a line node, what the character says; for a reply node, what the player says." },
         "file": { "type": "string", "description": "Path to referenced file (file-type nodes)." },
         "subpath": { "type": "string", "description": "Subpath to a heading or block within a file (file-type nodes)." },
         "url": { "type": "string", "description": "Referenced URL (link-type nodes)." },
         "label": { "type": "string", "description": "Text label (group-type nodes)." },
         "background": { "type": "string", "description": "Background image path (group-type nodes)." },
         "backgroundStyle": { "type": "string", "enum": ["cover", "ratio", "repeat"], "description": "Background rendering style (group-type nodes)." },
-        "x-id": { "type": "string", "description": "Engine/domain identifier of this node (e.g. \"ABELA[5]\"). Distinct from the canvas id." },
-        "x-kind": { "type": "string", "enum": ["line", "reply"], "description": "Closed rendering hint. line = utterance spoken to the player; reply = the player's own utterance." },
-        "x-role": { "type": "string", "description": "Open, project-defined semantic label (e.g. \"state\", \"transition\", \"paraphrase\")." },
-        "x-textId": { "type": "string", "description": "String-table reference for text (e.g. \"#2687\")." },
-        "x-condition": { "type": "string", "description": "Engine condition/trigger gating this node." },
-        "x-action": { "type": "string", "description": "Engine action executed when this node is reached." },
-        "x-sound": { "type": "string", "description": "Sound resource for this node's spoken line." },
-        "x-character": { "$ref": "#/definitions/character" }
+        "d-id": { "type": "string", "description": "Engine/domain identifier of this node (e.g. \"ABELA[5]\"). Distinct from the canvas id. The value format is a project convention, not part of the format." },
+        "d-kind": { "type": "string", "enum": ["line", "reply"], "description": "Closed rendering hint. line = utterance spoken to the player; reply = the player's own utterance." },
+        "d-role": { "type": "string", "description": "Open, project-defined semantic label (e.g. \"state\", \"transition\", \"paraphrase\")." },
+        "d-textId": { "type": "string", "description": "String-table reference for text (e.g. \"#2687\"). The value format is a project convention, not part of the format." },
+        "d-condition": { "type": "string", "description": "Engine condition/trigger gating this node." },
+        "d-action": { "type": "string", "description": "Engine action executed when this node is reached." },
+        "d-sound": { "type": "string", "description": "Sound resource for this node's spoken line." },
+        "d-character": { "$ref": "#/definitions/character" }
       },
       "allOf": [
         {
@@ -108,12 +108,12 @@
         "toSide": { "$ref": "#/definitions/side", "description": "Side of the destination node where the edge ends." },
         "toEnd": { "$ref": "#/definitions/endShape", "description": "Endpoint shape at edge end. Defaults to \"arrow\".", "default": "arrow" },
         "color": { "$ref": "#/definitions/canvasColor" },
-        "label": { "type": "string", "description": "Player-facing choice text — what the player sees and picks." },
-        "x-id": { "type": "string", "description": "Engine/domain identifier of this edge." },
-        "x-kind": { "type": "string", "enum": ["normal", "loop"], "description": "Closed rendering hint. loop marks a back-edge (a cycle); normal a forward transition. May be rendered differently (e.g. loop dashed)." },
-        "x-role": { "type": "string", "description": "Open, project-defined label." },
-        "x-condition": { "type": "string", "description": "Engine condition expression that gates this transition." },
-        "x-textId": { "type": "string", "description": "String-table reference for label, when present." }
+        "label": { "type": "string", "description": "Player-facing choice text — what the player sees and picks, as literal text." },
+        "d-id": { "type": "string", "description": "Engine/domain identifier of this edge. The value format is a project convention, not part of the format." },
+        "d-kind": { "type": "string", "enum": ["normal", "loop"], "description": "Closed rendering hint. loop marks a back-edge (a cycle); normal a forward transition." },
+        "d-role": { "type": "string", "description": "Open, project-defined label." },
+        "d-condition": { "type": "string", "description": "Engine condition expression that gates this transition." },
+        "d-textId": { "type": "string", "description": "String-table reference for label, when present. The value format is a project convention, not part of the format." }
       }
     }
   }
