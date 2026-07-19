@@ -1,5 +1,5 @@
 {
-	"x-dCanvasVersion": "3.0",
+	"d-version": "1.0",
 	"nodes": [
 		{"id": "a", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "A"}
 	],

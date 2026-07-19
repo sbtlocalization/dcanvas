@@ -1,10 +1,10 @@
 {
-	"x-dCanvasVersion": "3.1",
+	"d-version": "1.1",
 	"nodes": [
-		{"id": "a", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "Start", "x-kind": "line"},
-		{"id": "b", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "End", "x-kind": "reply"}
+		{"id": "a", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "Start", "d-kind": "line"},
+		{"id": "b", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "End", "d-kind": "reply"}
 	],
 	"edges": [
-		{"id": "e1", "fromNode": "a", "toNode": "b", "x-kind": "normal"}
+		{"id": "e1", "fromNode": "a", "toNode": "b", "d-kind": "normal"}
 	]
 }

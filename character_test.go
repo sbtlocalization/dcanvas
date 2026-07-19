@@ -7,19 +7,19 @@ package dcanvas
 
 import "testing"
 
-// characterOf decodes a single-node canvas carrying the given x-character JSON
-// and returns the node's re-encoded x-character map, so assertions are on the
+// characterOf decodes a single-node canvas carrying the given d-character JSON
+// and returns the node's re-encoded d-character map, so assertions are on the
 // externally observable JSON rather than the internal catch-all.
 func characterOf(t *testing.T, characterJSON string) map[string]any {
 	t.Helper()
 	input := `{
-		"x-dCanvasVersion": "3.0",
+		"d-version": "1.0",
 		"nodes": [
 			{
 				"id": "n1", "type": "text",
 				"x": 0, "y": 0, "width": 400, "height": 300,
 				"text": "hi",
-				"x-character": ` + characterJSON + `
+				"d-character": ` + characterJSON + `
 			}
 		],
 		"edges": []
@@ -30,9 +30,9 @@ func characterOf(t *testing.T, characterJSON string) map[string]any {
 	}
 	m := encodeToMap(t, c)
 	node := m["nodes"].([]any)[0].(map[string]any)
-	ch, ok := node["x-character"].(map[string]any)
+	ch, ok := node["d-character"].(map[string]any)
 	if !ok {
-		t.Fatalf("x-character missing or not an object: %v", node["x-character"])
+		t.Fatalf("d-character missing or not an object: %v", node["d-character"])
 	}
 	return ch
 }
@@ -61,12 +61,12 @@ func TestCharacter_TypedFields(t *testing.T) {
 			ch := characterOf(t, tc.characterJSON)
 			for k, want := range tc.want {
 				if ch[k] != want {
-					t.Errorf("x-character[%q] = %v, want %v", k, ch[k], want)
+					t.Errorf("d-character[%q] = %v, want %v", k, ch[k], want)
 				}
 			}
 			for _, k := range tc.absent {
 				if _, ok := ch[k]; ok {
-					t.Errorf("x-character[%q] should be absent (omitempty), got %v", k, ch[k])
+					t.Errorf("d-character[%q] should be absent (omitempty), got %v", k, ch[k])
 				}
 			}
 		})

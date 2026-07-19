@@ -3,14 +3,14 @@
 //
 // SPDX-License-Identifier: BlueOak-1.0.0
 
-// Package dcanvas provides types and IO for the dCanvas 3.0 format, a strict
+// Package dcanvas provides types and IO for the dCanvas 1.0 format, a strict
 // superset of JSON Canvas 1.0 for dialogue graphs.
 //
 // Every field belongs to exactly one of three layers:
 //
 //   - Layer 0 — the JSON Canvas core (id, type, x, y, width, height, color,
 //     text, edge label, …);
-//   - Layer 1 — the dialogue vocabulary, modelled below as typed x- fields;
+//   - Layer 1 — the dialogue vocabulary, modelled below as typed d- fields;
 //   - Layer 2 — project-specific x- fields the spec does not know about.
 //
 // The package understands Layers 0 and 1 as typed members. Any other field —
@@ -30,23 +30,23 @@ import (
 
 // Version is the format version this package reads and writes. Encode always
 // stamps it; Decode rejects any document whose major version differs.
-const Version = "3.0"
+const Version = "1.0"
 
-// Node x-kind values (closed set).
+// Node d-kind values (closed set).
 const (
 	KindLine  = "line"  // an utterance spoken to the player (NPC, narrator, object)
 	KindReply = "reply" // the player's own utterance
 )
 
-// Edge x-kind values (closed set).
+// Edge d-kind values (closed set).
 const (
 	KindNormal = "normal" // a forward transition
 	KindLoop   = "loop"   // a back-edge (a cycle in the dialogue), a rendering hint only
 )
 
-// Canvas is a dCanvas 3.0 document: a single dialogue graph.
+// Canvas is a dCanvas 1.0 document: a single dialogue graph.
 type Canvas struct {
-	// Version is the document's x-dCanvasVersion. Encode always writes "3.0"
+	// Version is the document's d-version. Encode always writes "1.0"
 	// regardless of this value; it is populated on Decode.
 	Version string
 	Nodes   []*Node
@@ -57,7 +57,7 @@ type Canvas struct {
 }
 
 // Node is a canvas node. Dialogue semantics (Layer 1) attach to text nodes
-// that carry x-kind; other text nodes are plain annotation cards, and file /
+// that carry d-kind; other text nodes are plain annotation cards, and file /
 // link / group nodes are opaque to dialogue logic. All are preserved.
 type Node struct {
 	// Layer 0 — JSON Canvas core.
@@ -68,17 +68,17 @@ type Node struct {
 	Width  int
 	Height int
 	Color  string // optional
-	Text   string // spoken content (clean text only)
+	Text   string // spoken content (literal text)
 
 	// Layer 1 — dialogue vocabulary. All optional.
-	XID       string     // engine/domain id (distinct from the canvas ID)
-	Kind      string     // x-kind: KindLine | KindReply
-	Role      string     // x-role: open, project-defined label
-	TextID    string     // x-textId: string-table reference for Text
-	Condition string     // x-condition: engine condition gating this node
-	Action    string     // x-action: engine action executed at this node
-	Sound     string     // x-sound: sound resource for this node's line
-	Character *Character // x-character: speaker information
+	DomainID  string     // engine/domain id (distinct from the canvas ID)
+	Kind      string     // d-kind: KindLine | KindReply
+	Role      string     // d-role: open, project-defined label
+	TextID    string     // d-textId: string-table reference for Text
+	Condition string     // d-condition: engine condition gating this node
+	Action    string     // d-action: engine action executed at this node
+	Sound     string     // d-sound: sound resource for this node's line
+	Character *Character // d-character: speaker information
 
 	// extra holds unrecognised node fields (including Layer 2 x- fields),
 	// preserved verbatim.
@@ -99,11 +99,11 @@ type Edge struct {
 	Label    string // optional: player-facing choice text
 
 	// Layer 1 — dialogue vocabulary. All optional.
-	XID       string // engine/domain id
-	Kind      string // x-kind: KindNormal | KindLoop
-	Role      string // x-role: open, project-defined label
-	Condition string // x-condition: engine condition gating this transition
-	TextID    string // x-textId: string-table reference for Label
+	DomainID  string // engine/domain id
+	Kind      string // d-kind: KindNormal | KindLoop
+	Role      string // d-role: open, project-defined label
+	Condition string // d-condition: engine condition gating this transition
+	TextID    string // d-textId: string-table reference for Label
 
 	// extra holds unrecognised edge fields, preserved verbatim.
 	extra map[string]json.RawMessage
@@ -113,7 +113,7 @@ type Edge struct {
 // in the spec: known fields are modelled as typed members, and any other key
 // is preserved verbatim on a round-trip via the same catch-all pattern used by
 // Node and Edge. This makes recursive preservation reusable for any future
-// known nested object, not specific to x-character.
+// known nested object, not specific to d-character.
 type Character struct {
 	Name     string // required
 	Portrait string // optional
@@ -157,7 +157,7 @@ func (w *objectWriter) str(key, val string) {
 	w.fields = append(w.fields, field{key, b})
 }
 
-// validKind reports whether an x-kind value is empty (the field is optional) or
+// validKind reports whether a d-kind value is empty (the field is optional) or
 // a member of its closed two-value set. It is the single source of truth for
 // closed-set membership, used by Validate; Encode does not enforce the set (it
 // preserves whatever a decoded file contained), so the check lives only there.
@@ -262,7 +262,7 @@ func (c *Canvas) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	if err := popString(raw, "x-dCanvasVersion", &c.Version); err != nil {
+	if err := popString(raw, "d-version", &c.Version); err != nil {
 		return err
 	}
 	if v, ok := raw["nodes"]; ok {
@@ -285,8 +285,8 @@ func (c *Canvas) UnmarshalJSON(data []byte) error {
 // any preserved unknown top-level fields. nodes and edges are always emitted as
 // arrays so the result is a clean JSON Canvas document.
 //
-// The decoded x-dCanvasVersion is preserved when its major matches the
-// library's, so a 3.1 file round-trips as 3.1; a canvas with no version
+// The decoded d-version is preserved when its major matches the
+// library's, so a 1.1 file round-trips as 1.1; a canvas with no version
 // (hand-built) or a different major is stamped with the library Version.
 func (c *Canvas) MarshalJSON() ([]byte, error) {
 	var w objectWriter
@@ -294,7 +294,7 @@ func (c *Canvas) MarshalJSON() ([]byte, error) {
 	if c.Version != "" && majorVersion(c.Version) == majorVersion(Version) {
 		version = c.Version
 	}
-	w.str("x-dCanvasVersion", version)
+	w.str("d-version", version)
 
 	nodes := c.Nodes
 	if nodes == nil {
@@ -343,13 +343,13 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 		"type":        &n.Type,
 		"color":       &n.Color,
 		"text":        &n.Text,
-		"x-id":        &n.XID,
-		"x-kind":      &n.Kind,
-		"x-role":      &n.Role,
-		"x-textId":    &n.TextID,
-		"x-condition": &n.Condition,
-		"x-action":    &n.Action,
-		"x-sound":     &n.Sound,
+		"d-id":        &n.DomainID,
+		"d-kind":      &n.Kind,
+		"d-role":      &n.Role,
+		"d-textId":    &n.TextID,
+		"d-condition": &n.Condition,
+		"d-action":    &n.Action,
+		"d-sound":     &n.Sound,
 	} {
 		if err := popString(raw, key, dst); err != nil {
 			return err
@@ -362,19 +362,19 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 			return err
 		}
 	}
-	if v, ok := raw["x-character"]; ok {
+	if v, ok := raw["d-character"]; ok {
 		var ch Character
 		if err := json.Unmarshal(v, &ch); err != nil {
-			return fmt.Errorf("dcanvas: field %q: %w", "x-character", err)
+			return fmt.Errorf("dcanvas: field %q: %w", "d-character", err)
 		}
 		n.Character = &ch
-		delete(raw, "x-character")
+		delete(raw, "d-character")
 	}
 	n.extra = raw
 	return nil
 }
 
-// MarshalJSON encodes a node, validating x-kind and merging back any preserved
+// MarshalJSON encodes a node, validating d-kind and merging back any preserved
 // unknown fields.
 func (n *Node) MarshalJSON() ([]byte, error) {
 	var w objectWriter
@@ -399,18 +399,18 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 		w.str("text", n.Text)
 	}
 
-	// Layer 1 — optional dialogue vocabulary. x-kind is written verbatim; the
+	// Layer 1 — optional dialogue vocabulary. d-kind is written verbatim; the
 	// closed-set check is Validate's job, not the writer's (a decoded file's
 	// value must round-trip even if unrecognised).
-	w.str("x-id", n.XID)
-	w.str("x-kind", n.Kind)
-	w.str("x-role", n.Role)
-	w.str("x-textId", n.TextID)
-	w.str("x-condition", n.Condition)
-	w.str("x-action", n.Action)
-	w.str("x-sound", n.Sound)
+	w.str("d-id", n.DomainID)
+	w.str("d-kind", n.Kind)
+	w.str("d-role", n.Role)
+	w.str("d-textId", n.TextID)
+	w.str("d-condition", n.Condition)
+	w.str("d-action", n.Action)
+	w.str("d-sound", n.Sound)
 	if n.Character != nil {
-		if err := w.always("x-character", n.Character); err != nil {
+		if err := w.always("d-character", n.Character); err != nil {
 			return nil, err
 		}
 	}
@@ -435,11 +435,11 @@ func (e *Edge) UnmarshalJSON(data []byte) error {
 		"toEnd":       &e.ToEnd,
 		"color":       &e.Color,
 		"label":       &e.Label,
-		"x-id":        &e.XID,
-		"x-kind":      &e.Kind,
-		"x-role":      &e.Role,
-		"x-condition": &e.Condition,
-		"x-textId":    &e.TextID,
+		"d-id":        &e.DomainID,
+		"d-kind":      &e.Kind,
+		"d-role":      &e.Role,
+		"d-condition": &e.Condition,
+		"d-textId":    &e.TextID,
 	} {
 		if err := popString(raw, key, dst); err != nil {
 			return err
@@ -449,7 +449,7 @@ func (e *Edge) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON encodes an edge, validating x-kind and merging back any preserved
+// MarshalJSON encodes an edge, validating d-kind and merging back any preserved
 // unknown fields.
 func (e *Edge) MarshalJSON() ([]byte, error) {
 	var w objectWriter
@@ -471,13 +471,13 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 	w.str("color", e.Color)
 	w.str("label", e.Label)
 
-	// Layer 1 — optional dialogue vocabulary. x-kind is written verbatim (see
+	// Layer 1 — optional dialogue vocabulary. d-kind is written verbatim (see
 	// Node.MarshalJSON); the closed-set check is Validate's job.
-	w.str("x-id", e.XID)
-	w.str("x-kind", e.Kind)
-	w.str("x-role", e.Role)
-	w.str("x-condition", e.Condition)
-	w.str("x-textId", e.TextID)
+	w.str("d-id", e.DomainID)
+	w.str("d-kind", e.Kind)
+	w.str("d-role", e.Role)
+	w.str("d-condition", e.Condition)
+	w.str("d-textId", e.TextID)
 	return w.bytes(e.extra), nil
 }
 

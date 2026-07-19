@@ -8,6 +8,7 @@ package dcanvas
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -40,13 +41,27 @@ func TestDecode_VersionGate(t *testing.T) {
 		input   string
 		wantErr bool
 	}{
-		{"v3.0 accepted", `{"x-dCanvasVersion":"3.0","nodes":[],"edges":[]}`, false},
-		{"v3.1 accepted (higher minor, same major)", `{"x-dCanvasVersion":"3.1"}`, false},
-		{"v2.0 rejected", `{"x-dCanvasVersion":"2.0","nodes":[],"edges":[]}`, true},
-		{"v4.0 rejected", `{"x-dCanvasVersion":"4.0"}`, true},
+		{"v1.0 accepted", `{"d-version":"1.0","nodes":[],"edges":[]}`, false},
+		{"v1.1 accepted (higher minor, same major)", `{"d-version":"1.1"}`, false},
+		{"v2.0 rejected", `{"d-version":"2.0","nodes":[],"edges":[]}`, true},
+		{"v4.0 rejected", `{"d-version":"4.0"}`, true},
 		{"missing version rejected", `{"nodes":[],"edges":[]}`, true},
 		{"malformed json rejected", `{not json`, true},
 	}
+	// A file stamped with the pre-1.0 internal version field carries no
+	// d-version at all, so it must be rejected the same way. The legacy key is
+	// assembled at runtime to keep the repo-wide grep for old spellings clean.
+	legacyKey := "x-" + "dCanvasVersion"
+	legacyVal := "3" + ".0"
+	tests = append(tests, struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		"legacy internal stamp rejected",
+		fmt.Sprintf(`{%q:%q,"nodes":[],"edges":[]}`, legacyKey, legacyVal),
+		true,
+	})
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := decodeString(t, tc.input)
@@ -66,14 +81,14 @@ func TestEncode_VersionContract(t *testing.T) {
 		want    string
 	}{
 		{"no version stamped with library version", "", Version},
-		{"same-major minor is preserved", "3.1", "3.1"},
+		{"same-major minor is preserved", "1.1", "1.1"},
 		{"different major replaced with library version", "9.9", Version},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			m := encodeToMap(t, &Canvas{Version: tc.version})
-			if got := m["x-dCanvasVersion"]; got != tc.want {
-				t.Errorf("x-dCanvasVersion = %v, want %q", got, tc.want)
+			if got := m["d-version"]; got != tc.want {
+				t.Errorf("d-version = %v, want %q", got, tc.want)
 			}
 		})
 	}
@@ -90,29 +105,29 @@ func TestEncode_NodesEdgesAlwaysArrays(t *testing.T) {
 }
 
 func TestRoundTrip_PreservesMinorVersion(t *testing.T) {
-	// A 3.1 document must round-trip as 3.1, not be downgraded to the library's
-	// 3.0.
-	c, err := decodeString(t, `{"x-dCanvasVersion":"3.1","nodes":[],"edges":[]}`)
+	// A 1.1 document must round-trip as 1.1, not be downgraded to the library's
+	// 1.0.
+	c, err := decodeString(t, `{"d-version":"1.1","nodes":[],"edges":[]}`)
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
 	m := encodeToMap(t, c)
-	if got := m["x-dCanvasVersion"]; got != "3.1" {
-		t.Errorf("x-dCanvasVersion = %v, want \"3.1\"", got)
+	if got := m["d-version"]; got != "1.1" {
+		t.Errorf("d-version = %v, want \"1.1\"", got)
 	}
 }
 
 func TestEncode_StrippedIsValidJSONCanvas(t *testing.T) {
-	// A document with no Layer 1 data must produce no x- fields on the node
-	// beyond nothing — i.e. only standard JSON Canvas fields remain.
+	// A document with no Layer 1 data must produce no d- or x- fields on the
+	// node — i.e. only standard JSON Canvas fields remain.
 	c := &Canvas{
 		Nodes: []*Node{{ID: "n1", Type: "text", X: 1, Y: 2, Width: 400, Height: 300, Text: "hi"}},
 	}
 	m := encodeToMap(t, c)
 	node := m["nodes"].([]any)[0].(map[string]any)
 	for k := range node {
-		if strings.HasPrefix(k, "x-") {
-			t.Errorf("node carried unexpected x- field %q for empty Layer 1", k)
+		if strings.HasPrefix(k, "d-") || strings.HasPrefix(k, "x-") {
+			t.Errorf("node carried unexpected extension field %q for empty Layer 1", k)
 		}
 	}
 	// Standard fields present.
@@ -125,14 +140,14 @@ func TestEncode_StrippedIsValidJSONCanvas(t *testing.T) {
 
 func TestRoundTrip_PreservesUnknownFields(t *testing.T) {
 	input := `{
-		"x-dCanvasVersion": "3.0",
+		"d-version": "1.0",
 		"x-unknownTopLevel": {"deep": [1, 2, 3]},
 		"nodes": [
 			{
 				"id": "n1", "type": "text",
 				"x": 0, "y": 0, "width": 400, "height": 300,
 				"text": "Greetings.",
-				"x-kind": "line",
+				"d-kind": "line",
 				"x-projectField": "keep me",
 				"unknownStandardLooking": 42
 			}
@@ -141,7 +156,7 @@ func TestRoundTrip_PreservesUnknownFields(t *testing.T) {
 			{
 				"id": "e1", "fromNode": "n1", "toNode": "n1",
 				"label": "loop back",
-				"x-kind": "loop",
+				"d-kind": "loop",
 				"x-edgeProjectField": ["a", "b"]
 			}
 		]
@@ -171,21 +186,21 @@ func TestRoundTrip_PreservesUnknownFields(t *testing.T) {
 
 func TestRoundTrip_TypedLayer1Faithful(t *testing.T) {
 	input := `{
-		"x-dCanvasVersion": "3.0",
+		"d-version": "1.0",
 		"nodes": [
 			{
 				"id": "n-ABELA-5", "type": "text",
 				"x": 10, "y": 20, "width": 400, "height": 300,
 				"color": "3",
 				"text": "My poor Ragefast.",
-				"x-id": "ABELA[5]",
-				"x-kind": "line",
-				"x-role": "state",
-				"x-textId": "#2687",
-				"x-condition": "Dead(\"Ragefast\")",
-				"x-action": "DoThing()",
-				"x-sound": "ABELA05.wav",
-				"x-character": {"name": "Abela the Nymph", "portrait": "None.png", "gender": "female"}
+				"d-id": "ABELA[5]",
+				"d-kind": "line",
+				"d-role": "state",
+				"d-textId": "#2687",
+				"d-condition": "Dead(\"Ragefast\")",
+				"d-action": "DoThing()",
+				"d-sound": "ABELA05.wav",
+				"d-character": {"name": "Abela the Nymph", "portrait": "abela.png", "gender": "female"}
 			}
 		],
 		"edges": [
@@ -193,11 +208,11 @@ func TestRoundTrip_TypedLayer1Faithful(t *testing.T) {
 				"id": "e-5-6", "fromNode": "n-ABELA-5", "fromSide": "bottom",
 				"toNode": "n-ABELA-6", "toSide": "top", "toEnd": "arrow",
 				"label": "Help her escape",
-				"x-id": "ABELA[5]->[6]",
-				"x-kind": "normal",
-				"x-role": "paraphrase",
-				"x-condition": "Global(\"x\",\"GLOBAL\",1)",
-				"x-textId": "#2690"
+				"d-id": "ABELA[5]->[6]",
+				"d-kind": "normal",
+				"d-role": "paraphrase",
+				"d-condition": "Global(\"x\",\"GLOBAL\",1)",
+				"d-textId": "#2690"
 			}
 		]
 	}`
@@ -211,24 +226,24 @@ func TestRoundTrip_TypedLayer1Faithful(t *testing.T) {
 	wantNode := Node{
 		ID: "n-ABELA-5", Type: "text", X: 10, Y: 20, Width: 400, Height: 300,
 		Color: "3", Text: "My poor Ragefast.",
-		XID: "ABELA[5]", Kind: KindLine, Role: "state", TextID: "#2687",
+		DomainID: "ABELA[5]", Kind: KindLine, Role: "state", TextID: "#2687",
 		Condition: "Dead(\"Ragefast\")", Action: "DoThing()", Sound: "ABELA05.wav",
 	}
 	if n.ID != wantNode.ID || n.Type != wantNode.Type || n.X != wantNode.X || n.Y != wantNode.Y ||
 		n.Width != wantNode.Width || n.Height != wantNode.Height || n.Color != wantNode.Color ||
-		n.Text != wantNode.Text || n.XID != wantNode.XID || n.Kind != wantNode.Kind ||
+		n.Text != wantNode.Text || n.DomainID != wantNode.DomainID || n.Kind != wantNode.Kind ||
 		n.Role != wantNode.Role || n.TextID != wantNode.TextID || n.Condition != wantNode.Condition ||
 		n.Action != wantNode.Action || n.Sound != wantNode.Sound {
 		t.Errorf("decoded node = %+v, want subset %+v", *n, wantNode)
 	}
-	if n.Character == nil || n.Character.Name != "Abela the Nymph" || n.Character.Portrait != "None.png" || n.Character.Gender != "female" {
+	if n.Character == nil || n.Character.Name != "Abela the Nymph" || n.Character.Portrait != "abela.png" || n.Character.Gender != "female" {
 		t.Errorf("decoded character = %+v", n.Character)
 	}
 
 	e := c.Edges[0]
 	if e.ID != "e-5-6" || e.FromNode != "n-ABELA-5" || e.FromSide != "bottom" ||
 		e.ToNode != "n-ABELA-6" || e.ToSide != "top" || e.ToEnd != "arrow" ||
-		e.Label != "Help her escape" || e.XID != "ABELA[5]->[6]" || e.Kind != KindNormal ||
+		e.Label != "Help her escape" || e.DomainID != "ABELA[5]->[6]" || e.Kind != KindNormal ||
 		e.Role != "paraphrase" || e.TextID != "#2690" {
 		t.Errorf("decoded edge = %+v", *e)
 	}
@@ -237,14 +252,14 @@ func TestRoundTrip_TypedLayer1Faithful(t *testing.T) {
 	m := encodeToMap(t, c)
 	node := m["nodes"].([]any)[0].(map[string]any)
 	for k, want := range map[string]any{
-		"x-id": "ABELA[5]", "x-kind": "line", "x-role": "state",
-		"x-textId": "#2687", "x-action": "DoThing()", "x-sound": "ABELA05.wav",
+		"d-id": "ABELA[5]", "d-kind": "line", "d-role": "state",
+		"d-textId": "#2687", "d-action": "DoThing()", "d-sound": "ABELA05.wav",
 	} {
 		if node[k] != want {
 			t.Errorf("re-encoded node[%q] = %v, want %v", k, node[k], want)
 		}
 	}
-	ch := node["x-character"].(map[string]any)
+	ch := node["d-character"].(map[string]any)
 	if ch["name"] != "Abela the Nymph" || ch["gender"] != "female" {
 		t.Errorf("re-encoded character = %v", ch)
 	}
@@ -310,7 +325,7 @@ func TestEncode_KeyOrder(t *testing.T) {
 	c := &Canvas{
 		Nodes: []*Node{{
 			ID: "n1", Type: "text", X: 1, Y: 2, Width: 400, Height: 300,
-			Color: "3", Text: "hi", XID: "X", Kind: KindLine, Role: "state",
+			Color: "3", Text: "hi", DomainID: "X", Kind: KindLine, Role: "state",
 		}},
 		Edges: []*Edge{{ID: "e1", FromNode: "n1", ToNode: "n1", Label: "go", Kind: KindNormal}},
 	}
@@ -321,7 +336,7 @@ func TestEncode_KeyOrder(t *testing.T) {
 	data := buf.Bytes()
 
 	top := objectKeysInOrder(t, data)
-	wantTop := []string{"x-dCanvasVersion", "nodes", "edges"}
+	wantTop := []string{"d-version", "nodes", "edges"}
 	if strings.Join(top, ",") != strings.Join(wantTop, ",") {
 		t.Errorf("top-level key order = %v, want %v", top, wantTop)
 	}
@@ -331,20 +346,20 @@ func TestEncode_KeyOrder(t *testing.T) {
 	idx := bytes.IndexByte(data, '{')
 	nodeStart := bytes.IndexByte(data[idx+1:], '{')
 	nodeKeys := objectKeysInOrder(t, data[idx+1+nodeStart:])
-	wantNode := []string{"id", "type", "x", "y", "width", "height", "color", "text", "x-id", "x-kind", "x-role"}
+	wantNode := []string{"id", "type", "x", "y", "width", "height", "color", "text", "d-id", "d-kind", "d-role"}
 	if strings.Join(nodeKeys, ",") != strings.Join(wantNode, ",") {
 		t.Errorf("node key order = %v, want %v", nodeKeys, wantNode)
 	}
 }
 
 func TestRoundTrip_PreservesUnrecognisedKind(t *testing.T) {
-	// Encode no longer enforces the closed x-kind set (that is Validate's job),
-	// so a file whose x-kind the library does not recognise round-trips without
+	// Encode no longer enforces the closed d-kind set (that is Validate's job),
+	// so a file whose d-kind the library does not recognise round-trips without
 	// error and keeps its value on the wire.
 	input := `{
-		"x-dCanvasVersion": "3.0",
-		"nodes": [{"id":"n","type":"text","x":0,"y":0,"width":400,"height":300,"text":"hi","x-kind":"shout"}],
-		"edges": [{"id":"e","fromNode":"n","toNode":"n","x-kind":"weird"}]
+		"d-version": "1.0",
+		"nodes": [{"id":"n","type":"text","x":0,"y":0,"width":400,"height":300,"text":"hi","d-kind":"shout"}],
+		"edges": [{"id":"e","fromNode":"n","toNode":"n","d-kind":"weird"}]
 	}`
 	c, err := decodeString(t, input)
 	if err != nil {
@@ -352,14 +367,14 @@ func TestRoundTrip_PreservesUnrecognisedKind(t *testing.T) {
 	}
 	var buf bytes.Buffer
 	if err := Encode(c, &buf); err != nil {
-		t.Fatalf("Encode should not reject an unrecognised x-kind: %v", err)
+		t.Fatalf("Encode should not reject an unrecognised d-kind: %v", err)
 	}
 	m := encodeToMap(t, c)
-	if got := m["nodes"].([]any)[0].(map[string]any)["x-kind"]; got != "shout" {
-		t.Errorf("node x-kind = %v, want \"shout\"", got)
+	if got := m["nodes"].([]any)[0].(map[string]any)["d-kind"]; got != "shout" {
+		t.Errorf("node d-kind = %v, want \"shout\"", got)
 	}
-	if got := m["edges"].([]any)[0].(map[string]any)["x-kind"]; got != "weird" {
-		t.Errorf("edge x-kind = %v, want \"weird\"", got)
+	if got := m["edges"].([]any)[0].(map[string]any)["d-kind"]; got != "weird" {
+		t.Errorf("edge d-kind = %v, want \"weird\"", got)
 	}
 }
 

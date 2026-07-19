@@ -1,10 +1,10 @@
 {
-	"x-dCanvasVersion": "3.0",
+	"d-version": "1.0",
 	"nodes": [
-		{"id": "a", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "A", "x-kind": "line"},
-		{"id": "b", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "B", "x-kind": "reply"}
+		{"id": "a", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "A", "d-kind": "line"},
+		{"id": "b", "type": "text", "x": 0, "y": 0, "width": 400, "height": 300, "text": "B", "d-kind": "reply"}
 	],
 	"edges": [
-		{"id": "e", "fromNode": "a", "toNode": "b", "x-kind": "loop"}
+		{"id": "e", "fromNode": "a", "toNode": "b", "d-kind": "loop"}
 	]
 }

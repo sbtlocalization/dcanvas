@@ -329,11 +329,11 @@ func (m model) renderDetail(width, height int) string {
 		}
 	}
 	b.WriteString("\n")
-	field("x-kind", n.Kind)
-	field("x-role", n.Role)
-	field("x-condition", n.Condition)
-	field("x-action", n.Action)
-	field("x-sound", n.Sound)
+	field("d-kind", n.Kind)
+	field("d-role", n.Role)
+	field("d-condition", n.Condition)
+	field("d-action", n.Action)
+	field("d-sound", n.Sound)
 
 	if it.edge != nil && it.edge.Label != "" {
 		b.WriteString("\n" + detailLabel.Render("Мітка переходу") + ": " + it.edge.Label + "\n")

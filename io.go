@@ -24,15 +24,15 @@ func Encode(c *Canvas, w io.Writer) error {
 }
 
 // Decode reads a Canvas from JSON in r. It validates the major version of
-// x-dCanvasVersion and rejects any document that is not 3.x (a 2.0 file is
-// rejected); there is no migration path. Unrecognised fields are preserved.
+// d-version and rejects any document that is not 1.x; a document with no
+// d-version at all is rejected too. Unrecognised fields are preserved.
 func Decode(r io.Reader) (*Canvas, error) {
 	var c Canvas
 	if err := json.NewDecoder(r).Decode(&c); err != nil {
 		return nil, fmt.Errorf("can't decode dcanvas: %w", err)
 	}
 	if c.Version == "" {
-		return nil, fmt.Errorf("can't decode dcanvas: missing x-dCanvasVersion")
+		return nil, fmt.Errorf("can't decode dcanvas: missing d-version")
 	}
 	if majorVersion(c.Version) != majorVersion(Version) {
 		return nil, fmt.Errorf("can't decode dcanvas: unsupported major version %q (want %s.x)", c.Version, majorVersion(Version))
@@ -40,8 +40,8 @@ func Decode(r io.Reader) (*Canvas, error) {
 	return &c, nil
 }
 
-// majorVersion returns the major component of a dotted version string ("3.1" →
-// "3"). It is the single definition of "same major" shared by Decode's version
+// majorVersion returns the major component of a dotted version string ("1.1" →
+// "1"). It is the single definition of "same major" shared by Decode's version
 // gate and Encode's version-preservation rule.
 func majorVersion(v string) string {
 	major, _, _ := strings.Cut(v, ".")

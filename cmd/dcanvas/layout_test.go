@@ -206,10 +206,10 @@ func TestLayoutCLI_LoopStrategy(t *testing.T) {
 }
 
 func TestLayoutCLI_PreservesInputVersion(t *testing.T) {
-	// A 3.1 input must round-trip through the CLI as 3.1, not be downgraded to
-	// the library's 3.0 (relies on the lossless round-trip from task 0013).
+	// A 1.1 input must round-trip through the CLI as 1.1, not be downgraded to
+	// the library's 1.0 (relies on the lossless round-trip from task 0013).
 	dir := t.TempDir()
-	in := copyFixture(t, dir, "version-3.1.d.canvas")
+	in := copyFixture(t, dir, "version-1.1.d.canvas")
 	out := filepath.Join(dir, "out.d.canvas")
 	if err := execute("layout", "-o", out, in); err != nil {
 		t.Fatalf("run layout: %v", err)
@@ -222,8 +222,8 @@ func TestLayoutCLI_PreservesInputVersion(t *testing.T) {
 	if err := json.Unmarshal(b, &doc); err != nil {
 		t.Fatalf("parse output: %v", err)
 	}
-	if doc["x-dCanvasVersion"] != "3.1" {
-		t.Errorf("x-dCanvasVersion = %v, want \"3.1\"", doc["x-dCanvasVersion"])
+	if doc["d-version"] != "1.1" {
+		t.Errorf("d-version = %v, want \"1.1\"", doc["d-version"])
 	}
 }
 

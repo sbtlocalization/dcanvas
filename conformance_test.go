@@ -64,12 +64,12 @@ func TestConformance_EncodedOutputValidatesAgainstSchema(t *testing.T) {
 		canvas *Canvas
 	}{
 		{
-			name: "line node with x-character",
+			name: "line node with d-character",
 			canvas: &Canvas{
 				Nodes: []*Node{
 					{ID: "n1", Type: "text", X: 0, Y: 0, Width: 400, Height: 300,
 						Text: "My poor Ragefast.", Kind: KindLine,
-						Character: &Character{Name: "Abela the Nymph", Portrait: "None.png", Gender: "female"}},
+						Character: &Character{Name: "Abela the Nymph", Portrait: "abela.png", Gender: "female"}},
 				},
 			},
 		},
@@ -80,7 +80,7 @@ func TestConformance_EncodedOutputValidatesAgainstSchema(t *testing.T) {
 			},
 		},
 		{
-			name: "edge with a label and an x-condition",
+			name: "edge with a label and a d-condition",
 			canvas: &Canvas{
 				Nodes: []*Node{
 					{ID: "n1", Type: "text", X: 0, Y: 0, Width: 400, Height: 300, Text: "Choose.", Kind: KindLine},
@@ -146,7 +146,7 @@ func TestConformance_FileAndLinkInheritRequiredFields(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := `{"x-dCanvasVersion":"3.0","nodes":[` + tc.node + `]}`
+			doc := `{"d-version":"1.0","nodes":[` + tc.node + `]}`
 			var instance any
 			if err := json.Unmarshal([]byte(doc), &instance); err != nil {
 				t.Fatalf("parse instance: %v", err)

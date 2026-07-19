@@ -1,5 +1,5 @@
 {
-	"x-dCanvasVersion": "3.0",
+	"d-version": "1.0",
 	"nodes": [
 		{
 			"id": "a",
@@ -9,7 +9,7 @@
 			"width": 400,
 			"height": 300,
 			"text": "Start",
-			"x-kind": "line",
+			"d-kind": "line",
 			"x-journalText": "keep me"
 		},
 		{
@@ -20,7 +20,7 @@
 			"width": 400,
 			"height": 300,
 			"text": "Left",
-			"x-kind": "reply"
+			"d-kind": "reply"
 		},
 		{
 			"id": "c",
@@ -30,7 +30,7 @@
 			"width": 400,
 			"height": 300,
 			"text": "Right",
-			"x-kind": "reply"
+			"d-kind": "reply"
 		},
 		{
 			"id": "d",
@@ -40,7 +40,7 @@
 			"width": 400,
 			"height": 300,
 			"text": "End",
-			"x-kind": "line"
+			"d-kind": "line"
 		}
 	],
 	"edges": [
@@ -48,25 +48,25 @@
 			"id": "e1",
 			"fromNode": "a",
 			"toNode": "b",
-			"x-kind": "normal"
+			"d-kind": "normal"
 		},
 		{
 			"id": "e2",
 			"fromNode": "a",
 			"toNode": "c",
-			"x-kind": "normal"
+			"d-kind": "normal"
 		},
 		{
 			"id": "e3",
 			"fromNode": "b",
 			"toNode": "d",
-			"x-kind": "normal"
+			"d-kind": "normal"
 		},
 		{
 			"id": "e4",
 			"fromNode": "c",
 			"toNode": "d",
-			"x-kind": "normal"
+			"d-kind": "normal"
 		}
 	],
 	"x-project": {

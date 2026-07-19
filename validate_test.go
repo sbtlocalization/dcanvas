@@ -54,17 +54,17 @@ func TestValidate_Failures(t *testing.T) {
 			wantSub: []string{"e1", "ghost"},
 		},
 		{
-			name:    "out-of-set node x-kind",
+			name:    "out-of-set node d-kind",
 			mutate:  func(c *Canvas) { c.Nodes[0].Kind = "shout" },
 			wantSub: []string{"n1", "shout"},
 		},
 		{
-			name:    "out-of-set edge x-kind",
+			name:    "out-of-set edge d-kind",
 			mutate:  func(c *Canvas) { c.Edges[0].Kind = "weird" },
 			wantSub: []string{"e1", "weird"},
 		},
 		{
-			name:    "x-character without name",
+			name:    "d-character without name",
 			mutate:  func(c *Canvas) { c.Nodes[0].Character.Name = "" },
 			wantSub: []string{"n1", "name"},
 		},
@@ -103,8 +103,8 @@ func TestValidate_EmptyTextIsValid(t *testing.T) {
 
 func TestValidate_ReportsMultipleProblems(t *testing.T) {
 	c := wellFormed()
-	c.Nodes[1].ID = "n1"        // duplicate id
-	c.Edges[0].Kind = "weird"   // bad edge kind
+	c.Nodes[1].ID = "n1"      // duplicate id
+	c.Edges[0].Kind = "weird" // bad edge kind
 	err := Validate(c)
 	if err == nil {
 		t.Fatal("expected an error for a canvas with multiple problems")

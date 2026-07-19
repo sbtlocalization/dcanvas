@@ -1,6 +1,8 @@
 # dCanvas Spec
 
-<small>Version 2.0 — 2026-02-20</small>
+<small>Version 0.2 — 2026-02-20</small>
+
+> **Note.** This internal spec was historically versioned **2.0** and was never published. It is archived as 0.2 so the public history of the format starts at the published dCanvas 1.0. The version stamps described in its body refer to real legacy artifacts and are left unchanged.
 
 ## Overview
 

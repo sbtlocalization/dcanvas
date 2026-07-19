@@ -18,9 +18,9 @@ import (
 //
 //   - node ids are unique within the file;
 //   - every edge fromNode/toNode references an existing node id;
-//   - x-kind values stay within their closed sets (nodes: line/reply; edges:
+//   - d-kind values stay within their closed sets (nodes: line/reply; edges:
 //     normal/loop);
-//   - required fields are present: name on x-character.
+//   - required fields are present: name on d-character.
 //
 // It deliberately does not check that a text node's text is non-empty: neither
 // JSON Canvas 1.0 nor dCanvas requires text to be non-empty (only present), and
@@ -47,11 +47,11 @@ func Validate(c *Canvas) error {
 
 		if !validKind(n.Kind, KindLine, KindReply) {
 			problems = append(problems, fmt.Errorf(
-				"dcanvas: node %q has invalid x-kind %q (want %q or %q)", n.ID, n.Kind, KindLine, KindReply))
+				"dcanvas: node %q has invalid d-kind %q (want %q or %q)", n.ID, n.Kind, KindLine, KindReply))
 		}
 		if n.Character != nil && n.Character.Name == "" {
 			problems = append(problems, fmt.Errorf(
-				"dcanvas: node %q has an x-character without a required name", n.ID))
+				"dcanvas: node %q has a d-character without a required name", n.ID))
 		}
 	}
 
@@ -67,7 +67,7 @@ func Validate(c *Canvas) error {
 		}
 		if !validKind(e.Kind, KindNormal, KindLoop) {
 			problems = append(problems, fmt.Errorf(
-				"dcanvas: edge %q has invalid x-kind %q (want %q or %q)", e.ID, e.Kind, KindNormal, KindLoop))
+				"dcanvas: edge %q has invalid d-kind %q (want %q or %q)", e.ID, e.Kind, KindNormal, KindLoop))
 		}
 	}
 

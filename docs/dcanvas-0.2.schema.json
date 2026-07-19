@@ -1,7 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/SBT/sbt-dialog-viewer/docs/dcanvas-2.0.schema.json",
-  "title": "dCanvas 2.0",
+  "title": "dCanvas 0.2",
+  "$comment": "Historically versioned 2.0 and never published; archived as 0.2 so the public history of the format starts at the published dCanvas 1.0. The version stamps it describes refer to real legacy artifacts and are unchanged.",
   "description": "Dialog Canvas format v2.0 — a strict superset of JSON Canvas 1.0 with x- extension fields for game dialog metadata.",
   "type": "object",
   "required": ["x-dCanvasVersion"],

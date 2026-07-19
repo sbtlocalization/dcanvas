@@ -26,7 +26,7 @@ import (
 type LoopStrategy int
 
 const (
-	// LoopCut excludes edges marked x-kind:loop from the layout graph, so the
+	// LoopCut excludes edges marked d-kind:loop from the layout graph, so the
 	// remaining (acyclic) graph lays out as a clean top-down dialogue tree with
 	// the entry node on top. This is the default and matches how the original
 	// sbt-infinity export positioned nodes. Loop edges still appear in the
@@ -56,7 +56,7 @@ func WithLoopStrategy(s LoopStrategy) Option {
 // auto-layout. It reads node Width/Height and edge FromNode/ToNode, and writes
 // back only each node's X and Y.
 //
-// By default (LoopCut) it reads the Layer 1 field x-kind to drop loop edges
+// By default (LoopCut) it reads the Layer 1 field d-kind to drop loop edges
 // from the layout graph, producing a clean top-down tree; pass
 // WithLoopStrategy(LoopDFS) to instead lay out every edge and break cycles
 // depth-first. Either way, cycles never crash layout.
@@ -89,7 +89,7 @@ func Layout(c *dcanvas.Canvas, opts ...Option) (err error) {
 		sizes[n.ID] = graph.Size{W: float64(n.Width), H: float64(n.Height)}
 	}
 
-	// Build the layout edge set, dropping x-kind:loop edges under LoopCut.
+	// Build the layout edge set, dropping d-kind:loop edges under LoopCut.
 	layoutEdges := make([][]string, 0, len(c.Edges))
 	for _, e := range c.Edges {
 		if cfg.loops == LoopCut && e.Kind == dcanvas.KindLoop {
