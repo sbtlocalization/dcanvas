@@ -408,6 +408,68 @@ func TestNode_SetExtra(t *testing.T) {
 	}
 }
 
+func TestEdge_SetExtra(t *testing.T) {
+	c := &Canvas{
+		Nodes: []*Node{{ID: "n", Type: "text", Text: "hi"}},
+		Edges: []*Edge{{ID: "e", FromNode: "n", ToNode: "n"}},
+	}
+	if err := c.Edges[0].SetExtra("x-choice", "charm"); err != nil {
+		t.Fatalf("SetExtra: %v", err)
+	}
+
+	m := encodeToMap(t, c)
+	edge := m["edges"].([]any)[0].(map[string]any)
+	if edge["x-choice"] != "charm" {
+		t.Errorf("edge[\"x-choice\"] = %v, want \"charm\"", edge["x-choice"])
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	c2, err := Decode(&buf)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	m2 := encodeToMap(t, c2)
+	edge2 := m2["edges"].([]any)[0].(map[string]any)
+	if edge2["x-choice"] != "charm" {
+		t.Errorf("after round-trip, edge[\"x-choice\"] = %v", edge2["x-choice"])
+	}
+}
+
+func TestEdge_SetExtra_TypedFieldWins(t *testing.T) {
+	c := &Canvas{
+		Nodes: []*Node{{ID: "n", Type: "text", Text: "hi"}},
+		Edges: []*Edge{{ID: "e", FromNode: "n", ToNode: "n", Label: "typed"}},
+	}
+	if err := c.Edges[0].SetExtra("label", "extra"); err != nil {
+		t.Fatalf("SetExtra: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	if n := strings.Count(buf.String(), `"label"`); n != 1 {
+		t.Errorf("label key written %d times, want 1: %s", n, buf.String())
+	}
+	m := encodeToMap(t, c)
+	if got := m["edges"].([]any)[0].(map[string]any)["label"]; got != "typed" {
+		t.Errorf("edge label = %v, want \"typed\"", got)
+	}
+}
+
+func TestEdge_SetExtra_UnmarshalableValue(t *testing.T) {
+	e := &Edge{ID: "e"}
+	err := e.SetExtra("x-bad", make(chan int))
+	if err == nil {
+		t.Fatal("SetExtra with an unmarshalable value returned nil")
+	}
+	if !strings.Contains(err.Error(), `"x-bad"`) {
+		t.Errorf("error %q does not name the key", err)
+	}
+}
+
 func TestEncode_AcceptsValidKinds(t *testing.T) {
 	c := &Canvas{
 		Nodes: []*Node{{ID: "n", Type: "text", Kind: KindReply, Text: "ok"}},

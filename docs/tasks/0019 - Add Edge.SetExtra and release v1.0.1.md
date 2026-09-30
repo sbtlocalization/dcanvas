@@ -1,7 +1,7 @@
 ---
 epic:
 parent:
-status: Backlog
+status: In progress
 priority: 3
 blocked by:
   - "[[0018 - Type the d-kind values of nodes and edges]]"
@@ -94,8 +94,8 @@ Once this and [[0018 - Type the d-kind values of nodes and edges|0018]] are in, 
 
 # Acceptance criteria
 
-- [ ] `Edge.SetExtra` attaches a field that appears in the encoded edge and is still there after decoding and encoding again
-- [ ] A typed edge field wins over an extra set under the same key, as it does for nodes
-- [ ] A value that cannot be marshaled returns an error naming the key, as it does for nodes
-- [ ] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass
+- [x] `Edge.SetExtra` attaches a field that appears in the encoded edge and is still there after decoding and encoding again
+- [x] A typed edge field wins over an extra set under the same key, as it does for nodes
+- [x] A value that cannot be marshaled returns an error naming the key, as it does for nodes
+- [x] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass
 - [ ] The module is tagged `v1.0.1` and `Version` is still `"1.0"`

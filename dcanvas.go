@@ -185,13 +185,17 @@ func (w *objectWriter) bytes(extra map[string]json.RawMessage) []byte {
 		buf.WriteByte(':')
 		buf.Write(v)
 	}
+	written := make(map[string]bool, len(w.fields))
 	for _, f := range w.fields {
 		emit(f.key, f.val)
+		written[f.key] = true
 	}
 	if len(extra) > 0 {
 		keys := make([]string, 0, len(extra))
 		for k := range extra {
-			keys = append(keys, k)
+			if !written[k] {
+				keys = append(keys, k)
+			}
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
@@ -330,6 +334,20 @@ func (n *Node) SetExtra(key string, val any) error {
 		n.extra = make(map[string]json.RawMessage)
 	}
 	n.extra[key] = b
+	return nil
+}
+
+// SetExtra attaches a Layer 2 (project-specific) field to the edge; the
+// contract is the same as Node.SetExtra.
+func (e *Edge) SetExtra(key string, val any) error {
+	b, err := json.Marshal(val)
+	if err != nil {
+		return fmt.Errorf("dcanvas: field %q: %w", key, err)
+	}
+	if e.extra == nil {
+		e.extra = make(map[string]json.RawMessage)
+	}
+	e.extra[key] = b
 	return nil
 }
 
