@@ -32,7 +32,7 @@ import (
 // stamps it; Decode rejects any document whose major version differs.
 const Version = "1.0"
 
-// Node d-kind values (closed set).
+// NodeKind is a node's d-kind; its values form a closed set.
 type NodeKind string
 
 const (
@@ -40,7 +40,7 @@ const (
 	KindReply NodeKind = "reply" // the player's own utterance
 )
 
-// Edge d-kind values (closed set).
+// EdgeKind is an edge's d-kind; its values form a closed set.
 type EdgeKind string
 
 const (
@@ -326,28 +326,24 @@ func (c *Canvas) MarshalJSON() ([]byte, error) {
 // round-trip through Decode, the same as any other unrecognised field; a
 // typed field with the same key always wins.
 func (n *Node) SetExtra(key string, val any) error {
-	b, err := json.Marshal(val)
-	if err != nil {
-		return fmt.Errorf("dcanvas: field %q: %w", key, err)
-	}
-	if n.extra == nil {
-		n.extra = make(map[string]json.RawMessage)
-	}
-	n.extra[key] = b
-	return nil
+	return setExtra(&n.extra, key, val)
 }
 
 // SetExtra attaches a Layer 2 (project-specific) field to the edge; the
 // contract is the same as Node.SetExtra.
 func (e *Edge) SetExtra(key string, val any) error {
+	return setExtra(&e.extra, key, val)
+}
+
+func setExtra(extra *map[string]json.RawMessage, key string, val any) error {
 	b, err := json.Marshal(val)
 	if err != nil {
 		return fmt.Errorf("dcanvas: field %q: %w", key, err)
 	}
-	if e.extra == nil {
-		e.extra = make(map[string]json.RawMessage)
+	if *extra == nil {
+		*extra = make(map[string]json.RawMessage)
 	}
-	e.extra[key] = b
+	(*extra)[key] = b
 	return nil
 }
 

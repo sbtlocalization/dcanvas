@@ -408,6 +408,24 @@ func TestNode_SetExtra(t *testing.T) {
 	}
 }
 
+func TestNode_SetExtra_TypedFieldWins(t *testing.T) {
+	c := &Canvas{Nodes: []*Node{{ID: "n", Type: "text", Text: "typed"}}}
+	if err := c.Nodes[0].SetExtra("text", "extra"); err != nil {
+		t.Fatalf("SetExtra: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	if n := strings.Count(buf.String(), `"text":`); n != 1 {
+		t.Errorf("text key written %d times, want 1: %s", n, buf.String())
+	}
+	m := encodeToMap(t, c)
+	if got := m["nodes"].([]any)[0].(map[string]any)["text"]; got != "typed" {
+		t.Errorf("node text = %v, want \"typed\"", got)
+	}
+}
+
 func TestEdge_SetExtra(t *testing.T) {
 	c := &Canvas{
 		Nodes: []*Node{{ID: "n", Type: "text", Text: "hi"}},
