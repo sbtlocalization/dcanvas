@@ -1,7 +1,7 @@
 ---
 epic:
 parent:
-status: Backlog
+status: Done
 priority: 3
 blocked by:
 kind: Task
@@ -93,8 +93,8 @@ Consumers that only assign and compare the `Kind*` constants keep compiling unch
 
 # Acceptance criteria
 
-- [ ] `NodeKind` and `EdgeKind` exist, `Node.Kind` and `Edge.Kind` have those types, and `KindLine`, `KindReply`, `KindNormal`, `KindLoop` are typed constants
-- [ ] Assigning an `EdgeKind` to `Node.Kind`, or a `NodeKind` to `Edge.Kind`, does not compile
-- [ ] Encoding and decoding produce and accept exactly the same `d-kind` JSON as before, and validation still rejects an unknown kind
-- [ ] The reference CLI builds and shows `d-kind` as before
-- [ ] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass
+- [x] `NodeKind` and `EdgeKind` exist, `Node.Kind` and `Edge.Kind` have those types, and `KindLine`, `KindReply`, `KindNormal`, `KindLoop` are typed constants
+- [x] Assigning an `EdgeKind` to `Node.Kind`, or a `NodeKind` to `Edge.Kind`, does not compile
+- [x] Encoding and decoding produce and accept exactly the same `d-kind` JSON as before, and validation still rejects an unknown kind
+- [x] The reference CLI builds and shows `d-kind` as before
+- [x] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass

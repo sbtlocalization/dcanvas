@@ -33,15 +33,19 @@ import (
 const Version = "1.0"
 
 // Node d-kind values (closed set).
+type NodeKind string
+
 const (
-	KindLine  = "line"  // an utterance spoken to the player (NPC, narrator, object)
-	KindReply = "reply" // the player's own utterance
+	KindLine  NodeKind = "line"  // an utterance spoken to the player (NPC, narrator, object)
+	KindReply NodeKind = "reply" // the player's own utterance
 )
 
 // Edge d-kind values (closed set).
+type EdgeKind string
+
 const (
-	KindNormal = "normal" // a forward transition
-	KindLoop   = "loop"   // a back-edge (a cycle in the dialogue), a rendering hint only
+	KindNormal EdgeKind = "normal" // a forward transition
+	KindLoop   EdgeKind = "loop"   // a back-edge (a cycle in the dialogue), a rendering hint only
 )
 
 // Canvas is a dCanvas 1.0 document: a single dialogue graph.
@@ -72,7 +76,7 @@ type Node struct {
 
 	// Layer 1 — dialogue vocabulary. All optional.
 	DomainID  string     // engine/domain id (distinct from the canvas ID)
-	Kind      string     // d-kind: KindLine | KindReply
+	Kind      NodeKind   // d-kind: KindLine | KindReply
 	Role      string     // d-role: open, project-defined label
 	TextID    string     // d-textId: string-table reference for Text
 	Condition string     // d-condition: engine condition gating this node
@@ -99,11 +103,11 @@ type Edge struct {
 	Label    string // optional: player-facing choice text
 
 	// Layer 1 — dialogue vocabulary. All optional.
-	DomainID  string // engine/domain id
-	Kind      string // d-kind: KindNormal | KindLoop
-	Role      string // d-role: open, project-defined label
-	Condition string // d-condition: engine condition gating this transition
-	TextID    string // d-textId: string-table reference for Label
+	DomainID  string   // engine/domain id
+	Kind      EdgeKind // d-kind: KindNormal | KindLoop
+	Role      string   // d-role: open, project-defined label
+	Condition string   // d-condition: engine condition gating this transition
+	TextID    string   // d-textId: string-table reference for Label
 
 	// extra holds unrecognised edge fields, preserved verbatim.
 	extra map[string]json.RawMessage
@@ -161,7 +165,7 @@ func (w *objectWriter) str(key, val string) {
 // a member of its closed two-value set. It is the single source of truth for
 // closed-set membership, used by Validate; Encode does not enforce the set (it
 // preserves whatever a decoded file contained), so the check lives only there.
-func validKind(val, a, b string) bool {
+func validKind[K ~string](val, a, b K) bool {
 	return val == "" || val == a || val == b
 }
 
@@ -200,7 +204,7 @@ func (w *objectWriter) bytes(extra map[string]json.RawMessage) []byte {
 
 // popString unmarshals a known string field out of raw and removes its key, so
 // that whatever remains in raw is genuinely unknown.
-func popString(raw map[string]json.RawMessage, key string, dst *string) error {
+func popString[S ~string](raw map[string]json.RawMessage, key string, dst *S) error {
 	if v, ok := raw[key]; ok {
 		if err := json.Unmarshal(v, dst); err != nil {
 			return fmt.Errorf("dcanvas: field %q: %w", key, err)
@@ -344,7 +348,6 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 		"color":       &n.Color,
 		"text":        &n.Text,
 		"d-id":        &n.DomainID,
-		"d-kind":      &n.Kind,
 		"d-role":      &n.Role,
 		"d-textId":    &n.TextID,
 		"d-condition": &n.Condition,
@@ -354,6 +357,9 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 		if err := popString(raw, key, dst); err != nil {
 			return err
 		}
+	}
+	if err := popString(raw, "d-kind", &n.Kind); err != nil {
+		return err
 	}
 	for key, dst := range map[string]*int{
 		"x": &n.X, "y": &n.Y, "width": &n.Width, "height": &n.Height,
@@ -403,7 +409,7 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	// closed-set check is Validate's job, not the writer's (a decoded file's
 	// value must round-trip even if unrecognised).
 	w.str("d-id", n.DomainID)
-	w.str("d-kind", n.Kind)
+	w.str("d-kind", string(n.Kind))
 	w.str("d-role", n.Role)
 	w.str("d-textId", n.TextID)
 	w.str("d-condition", n.Condition)
@@ -436,7 +442,6 @@ func (e *Edge) UnmarshalJSON(data []byte) error {
 		"color":       &e.Color,
 		"label":       &e.Label,
 		"d-id":        &e.DomainID,
-		"d-kind":      &e.Kind,
 		"d-role":      &e.Role,
 		"d-condition": &e.Condition,
 		"d-textId":    &e.TextID,
@@ -444,6 +449,9 @@ func (e *Edge) UnmarshalJSON(data []byte) error {
 		if err := popString(raw, key, dst); err != nil {
 			return err
 		}
+	}
+	if err := popString(raw, "d-kind", &e.Kind); err != nil {
+		return err
 	}
 	e.extra = raw
 	return nil
@@ -474,7 +482,7 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 	// Layer 1 — optional dialogue vocabulary. d-kind is written verbatim (see
 	// Node.MarshalJSON); the closed-set check is Validate's job.
 	w.str("d-id", e.DomainID)
-	w.str("d-kind", e.Kind)
+	w.str("d-kind", string(e.Kind))
 	w.str("d-role", e.Role)
 	w.str("d-condition", e.Condition)
 	w.str("d-textId", e.TextID)

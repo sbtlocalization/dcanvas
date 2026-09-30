@@ -329,7 +329,7 @@ func (m model) renderDetail(width, height int) string {
 		}
 	}
 	b.WriteString("\n")
-	field("d-kind", n.Kind)
+	field("d-kind", string(n.Kind))
 	field("d-role", n.Role)
 	field("d-condition", n.Condition)
 	field("d-action", n.Action)
