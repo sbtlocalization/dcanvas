@@ -9,8 +9,8 @@
   "properties": {
     "d-version": {
       "type": "string",
-      "const": "1.0",
-      "description": "Format version identifier. Major version governs compatibility."
+      "pattern": "^1\\.\\d+$",
+      "description": "Format version identifier. Major version governs compatibility: this schema describes the 1.0 structure and accepts any 1.x document, which therefore validates exactly when it is structurally compatible."
     },
     "nodes": {
       "type": "array",
