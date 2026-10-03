@@ -1,13 +1,13 @@
 ---
-epic:
+epic: "[[EPIC-0004 - dCanvas 1.1 alternative characters and a character's text ID]]"
 parent:
-status: Done
+status: To do
 priority: 3
 blocked by:
-  - "[[0018 - Type the d-kind values of nodes and edges]]"
+  - "[[0022 - Show name text IDs and alternative speakers in the viewer]]"
 kind: Task
-mode: AFK
-model: sonnet
+mode: HITL
+tier: low
 ---
 
 # Sub-tasks
@@ -84,16 +84,13 @@ views:
 
 ```
 <!-- end unchanged block -->
+
 # What to build
 
-A project can attach its own Layer 2 `x-` field to a node through `Node.SetExtra`, but not to an edge, although the spec allows `x-` fields on edges just as on nodes and the library already preserves unknown edge fields on a round trip. `Edge.SetExtra` closes that gap with the same contract as its node counterpart: the value is JSON-marshaled, written verbatim on encode, survives decoding like any other unrecognised field, and a typed field with the same key always wins.
-
-Once this and [[0018 - Type the d-kind values of nodes and edges|0018]] are in, the module is tagged `v1.0.1`: both are library-only changes, which go into the patch under [[ADR-0016 - The module version follows the format version and library-only changes go into the patch|ADR-0016]]. `Version` and the spec stay at 1.0.
+dCanvas 1.1 is released: the module is tagged `v1.1.0`, since a new format minor is the one thing that moves the module minor ([[ADR-0016 - The module version follows the format version and library-only changes go into the patch|ADR-0016]]), and `cmd/dcanvas` depends on it. Tagging and pushing are the maintainer's call, hence HITL.
 
 # Acceptance criteria
 
-- [x] `Edge.SetExtra` attaches a field that appears in the encoded edge and is still there after decoding and encoding again
-- [x] A typed edge field wins over an extra set under the same key, as it does for nodes
-- [x] A value that cannot be marshaled returns an error naming the key, as it does for nodes
-- [x] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass
-- [x] The module is tagged `v1.0.1` and `Version` is still `"1.0"`
+- [ ] The module is tagged `v1.1.0` and `Version` is `"1.1"`
+- [ ] `cmd/dcanvas` depends on `v1.1.0`
+- [ ] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass at the tag
