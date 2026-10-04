@@ -1,5 +1,5 @@
 ---
-epic: "[[EPIC-0004 - dCanvas 1.1 alternative characters and a character's text ID]]"
+epic: "[[EPIC-0004 - dCanvas 1.1 alternative characters and a character text ID]]"
 parent:
 status: Done
 priority: 3
