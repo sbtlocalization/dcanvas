@@ -23,7 +23,8 @@ package dcanvas
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"sort"
 )
@@ -57,7 +58,7 @@ type Canvas struct {
 	Edges   []*Edge
 
 	// extra holds unrecognised top-level fields, preserved verbatim.
-	extra map[string]json.RawMessage
+	extra map[string]jsontext.Value
 }
 
 // Node is a canvas node. Dialogue semantics (Layer 1) attach to text nodes
@@ -87,7 +88,7 @@ type Node struct {
 
 	// extra holds unrecognised node fields (including Layer 2 x- fields),
 	// preserved verbatim.
-	extra map[string]json.RawMessage
+	extra map[string]jsontext.Value
 }
 
 // Edge is a connection between two nodes.
@@ -111,7 +112,7 @@ type Edge struct {
 	TextID    string   // d-textId: string-table reference for Label
 
 	// extra holds unrecognised edge fields, preserved verbatim.
-	extra map[string]json.RawMessage
+	extra map[string]jsontext.Value
 }
 
 // Character holds speaker information for a dialogue node. It is an open object
@@ -126,7 +127,7 @@ type Character struct {
 	Gender   string // optional
 
 	// extra holds unrecognised character fields, preserved verbatim.
-	extra map[string]json.RawMessage
+	extra map[string]jsontext.Value
 }
 
 // --- preservation helpers ---------------------------------------------------
@@ -137,18 +138,25 @@ type Character struct {
 // preservation while producing readable, JSON-Canvas-conventional output.
 type objectWriter struct {
 	fields []field
+	err    error // the first marshalling error, reported by bytes
 }
 
 type field struct {
 	key string
-	val json.RawMessage
+	val jsontext.Value
 }
 
-// always marshals a value and always emits it (used for required fields).
+// always marshals a value and always emits it (used for required fields). A
+// value that fails to marshal, such as a string that is not valid UTF-8, is
+// also remembered, so that bytes reports it even where the caller ignores it.
 func (w *objectWriter) always(key string, val any) error {
 	b, err := json.Marshal(val)
 	if err != nil {
-		return fmt.Errorf("dcanvas: field %q: %w", key, err)
+		err = fmt.Errorf("dcanvas: field %q: %w", key, err)
+		if w.err == nil {
+			w.err = err
+		}
+		return err
 	}
 	w.fields = append(w.fields, field{key, b})
 	return nil
@@ -159,8 +167,7 @@ func (w *objectWriter) str(key, val string) {
 	if val == "" {
 		return
 	}
-	b, _ := json.Marshal(val) // marshalling a string never fails
-	w.fields = append(w.fields, field{key, b})
+	_ = w.always(key, val) // a failure is reported by bytes
 }
 
 // validKind reports whether a d-kind value is empty (the field is optional) or
@@ -173,11 +180,15 @@ func validKind[K ~string](val, a, b K) bool {
 
 // bytes serialises the ordered known fields followed by the preserved unknown
 // fields (sorted for determinism, since their original order is not retained).
-func (w *objectWriter) bytes(extra map[string]json.RawMessage) []byte {
+// It fails with the first field that could not be marshalled.
+func (w *objectWriter) bytes(extra map[string]jsontext.Value) ([]byte, error) {
+	if w.err != nil {
+		return nil, w.err
+	}
 	var buf bytes.Buffer
 	buf.WriteByte('{')
 	first := true
-	emit := func(k string, v json.RawMessage) {
+	emit := func(k string, v jsontext.Value) {
 		if !first {
 			buf.WriteByte(',')
 		}
@@ -205,12 +216,12 @@ func (w *objectWriter) bytes(extra map[string]json.RawMessage) []byte {
 		}
 	}
 	buf.WriteByte('}')
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
 // popString unmarshals a known string field out of raw and removes its key, so
 // that whatever remains in raw is genuinely unknown.
-func popString[S ~string](raw map[string]json.RawMessage, key string, dst *S) error {
+func popString[S ~string](raw map[string]jsontext.Value, key string, dst *S) error {
 	if v, ok := raw[key]; ok {
 		if err := json.Unmarshal(v, dst); err != nil {
 			return fmt.Errorf("dcanvas: field %q: %w", key, err)
@@ -221,7 +232,7 @@ func popString[S ~string](raw map[string]json.RawMessage, key string, dst *S) er
 }
 
 // popInt is popString's integer counterpart.
-func popInt(raw map[string]json.RawMessage, key string, dst *int) error {
+func popInt(raw map[string]jsontext.Value, key string, dst *int) error {
 	if v, ok := raw[key]; ok {
 		if err := json.Unmarshal(v, dst); err != nil {
 			return fmt.Errorf("dcanvas: field %q: %w", key, err)
@@ -236,7 +247,7 @@ func popInt(raw map[string]json.RawMessage, key string, dst *int) error {
 // UnmarshalJSON decodes a character, keeping any unrecognised field in a
 // catch-all so nested unknown keys survive a round-trip.
 func (ch *Character) UnmarshalJSON(data []byte) error {
-	var raw map[string]json.RawMessage
+	var raw map[string]jsontext.Value
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
@@ -263,14 +274,14 @@ func (ch *Character) MarshalJSON() ([]byte, error) {
 	w.str("textId", ch.TextID)
 	w.str("portrait", ch.Portrait)
 	w.str("gender", ch.Gender)
-	return w.bytes(ch.extra), nil
+	return w.bytes(ch.extra)
 }
 
 // --- Canvas IO --------------------------------------------------------------
 
 // UnmarshalJSON decodes a canvas, keeping any unrecognised top-level field.
 func (c *Canvas) UnmarshalJSON(data []byte) error {
-	var raw map[string]json.RawMessage
+	var raw map[string]jsontext.Value
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
@@ -322,7 +333,7 @@ func (c *Canvas) MarshalJSON() ([]byte, error) {
 	if err := w.always("edges", edges); err != nil {
 		return nil, err
 	}
-	return w.bytes(c.extra), nil
+	return w.bytes(c.extra)
 }
 
 // SetExtra attaches a Layer 2 (project-specific) field to the node by
@@ -339,13 +350,15 @@ func (e *Edge) SetExtra(key string, val any) error {
 	return setExtra(&e.extra, key, val)
 }
 
-func setExtra(extra *map[string]json.RawMessage, key string, val any) error {
-	b, err := json.Marshal(val)
+func setExtra(extra *map[string]jsontext.Value, key string, val any) error {
+	// Deterministic keeps the keys of a map value sorted, as v1 did, so the
+	// same value always writes the same bytes.
+	b, err := json.Marshal(val, json.Deterministic(true))
 	if err != nil {
 		return fmt.Errorf("dcanvas: field %q: %w", key, err)
 	}
 	if *extra == nil {
-		*extra = make(map[string]json.RawMessage)
+		*extra = make(map[string]jsontext.Value)
 	}
 	(*extra)[key] = b
 	return nil
@@ -356,7 +369,7 @@ func setExtra(extra *map[string]json.RawMessage, key string, val any) error {
 // UnmarshalJSON decodes a node, keeping any unrecognised field (including
 // Layer 2 x- fields) in a catch-all.
 func (n *Node) UnmarshalJSON(data []byte) error {
-	var raw map[string]json.RawMessage
+	var raw map[string]jsontext.Value
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
@@ -449,14 +462,14 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 			return nil, err
 		}
 	}
-	return w.bytes(n.extra), nil
+	return w.bytes(n.extra)
 }
 
 // --- Edge IO ----------------------------------------------------------------
 
 // UnmarshalJSON decodes an edge, keeping any unrecognised field in a catch-all.
 func (e *Edge) UnmarshalJSON(data []byte) error {
-	var raw map[string]json.RawMessage
+	var raw map[string]jsontext.Value
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
@@ -515,7 +528,7 @@ func (e *Edge) MarshalJSON() ([]byte, error) {
 	w.str("d-role", e.Role)
 	w.str("d-condition", e.Condition)
 	w.str("d-textId", e.TextID)
-	return w.bytes(e.extra), nil
+	return w.bytes(e.extra)
 }
 
 // HasOverlappingNodes reports whether any two nodes in the canvas have

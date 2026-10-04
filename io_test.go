@@ -7,7 +7,8 @@ package dcanvas
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"testing"
@@ -268,59 +269,30 @@ func TestRoundTrip_TypedLayer1Faithful(t *testing.T) {
 }
 
 // objectKeysInOrder reads the keys of the first JSON object found in data, in
-// document order (json.Decoder preserves it, unlike a map). Nested values are
-// skipped so only the immediate object's keys are returned.
+// document order (jsontext.Decoder preserves it, unlike a map). Nested values
+// are skipped so only the immediate object's keys are returned.
 func objectKeysInOrder(t *testing.T, data []byte) []string {
 	t.Helper()
-	dec := json.NewDecoder(bytes.NewReader(data))
-	for { // advance to the first '{'
-		tok, err := dec.Token()
-		if err != nil {
-			t.Fatalf("scanning for object start: %v", err)
-		}
-		if d, ok := tok.(json.Delim); ok && d == '{' {
-			break
-		}
+	start := bytes.IndexByte(data, '{')
+	if start < 0 {
+		t.Fatalf("no object in %q", data)
+	}
+	dec := jsontext.NewDecoder(bytes.NewReader(data[start:]))
+	if _, err := dec.ReadToken(); err != nil { // the opening '{'
+		t.Fatalf("reading object start: %v", err)
 	}
 	var keys []string
-	for dec.More() {
-		keyTok, err := dec.Token()
+	for dec.PeekKind() != '}' {
+		keyTok, err := dec.ReadToken()
 		if err != nil {
 			t.Fatalf("reading key: %v", err)
 		}
-		keys = append(keys, keyTok.(string))
-		if err := skipJSONValue(dec); err != nil {
+		keys = append(keys, keyTok.String())
+		if err := dec.SkipValue(); err != nil {
 			t.Fatalf("skipping value: %v", err)
 		}
 	}
 	return keys
-}
-
-// skipJSONValue consumes exactly one value (scalar or a fully nested
-// object/array) from the decoder.
-func skipJSONValue(dec *json.Decoder) error {
-	tok, err := dec.Token()
-	if err != nil {
-		return err
-	}
-	d, ok := tok.(json.Delim)
-	if !ok || (d != '{' && d != '[') {
-		return nil // scalar
-	}
-	for depth := 1; depth > 0; {
-		t2, err := dec.Token()
-		if err != nil {
-			return err
-		}
-		if dd, ok := t2.(json.Delim); ok {
-			if dd == '{' || dd == '[' {
-				depth++
-			} else {
-				depth--
-			}
-		}
-	}
-	return nil
 }
 
 func TestEncode_KeyOrder(t *testing.T) {
@@ -497,5 +469,140 @@ func TestEncode_AcceptsValidKinds(t *testing.T) {
 	}
 	if err := Encode(c, &bytes.Buffer{}); err != nil {
 		t.Fatalf("Encode with valid kinds: %v", err)
+	}
+}
+
+func TestDecode_Strict(t *testing.T) {
+	// Reading never alters a document silently: anything the format's field
+	// preservation and literal text cannot carry through is an error.
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"duplicated top-level key", `{"d-version":"1.1","d-version":"1.0"}`},
+		{"duplicated node key", `{"d-version":"1.1","nodes":[{"id":"n","type":"text","text":"a","text":"b"}]}`},
+		{"duplicated key in an unknown field", `{"d-version":"1.1","x-a":{"k":1,"k":2}}`},
+		{"invalid UTF-8 in a string", "{\"d-version\":\"1.1\",\"nodes\":[{\"id\":\"n\",\"type\":\"text\",\"text\":\"a\xffb\"}]}"},
+		{"lone surrogate escape in a string", `{"d-version":"1.1","nodes":[{"id":"n","type":"text","text":"a\ud800b"}]}`},
+		{"trailing garbage", `{"d-version":"1.1"} junk`},
+		{"a second document", `{"d-version":"1.1"}{"d-version":"1.1"}`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := decodeString(t, tc.input)
+			if err == nil {
+				t.Fatalf("Decode(%q) succeeded, want an error", tc.input)
+			}
+			if !strings.HasPrefix(err.Error(), "can't decode dcanvas: ") {
+				t.Errorf("error %q lacks the \"can't decode dcanvas: \" prefix", err)
+			}
+		})
+	}
+}
+
+func TestDecode_TrailingWhitespaceAccepted(t *testing.T) {
+	if _, err := decodeString(t, "{\"d-version\":\"1.1\"}\n\n"); err != nil {
+		t.Fatalf("Decode with trailing whitespace: %v", err)
+	}
+}
+
+func TestEncode_WritesTextLiterally(t *testing.T) {
+	// <, >, & and U+2028/2029 are written as they are, in known fields and in
+	// an unknown one; an escape read from a file is written as its character.
+	input := `{
+		"d-version": "1.1",
+		"nodes": [{"id":"n","type":"text","x":0,"y":0,"width":1,"height":1,
+			"text":"a<b>&c` + "\u2028\u2029" + `d",
+			"x-markup":{"s":"<i>&amp;</i>` + "\u2028" + `","escaped":"\u003c\u0026\u003e\u2028"}}],
+		"edges": [{"id":"e","fromNode":"n","toNode":"n","label":"<go> & see"}]
+	}`
+	c, err := decodeString(t, input)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{
+		`"text": "a<b>&c` + "\u2028\u2029" + `d"`,
+		`"label": "<go> & see"`,
+		`"s": "<i>&amp;</i>` + "\u2028" + `"`,
+		`"escaped": "<&>` + "\u2028" + `"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %s:\n%s", want, out)
+		}
+	}
+	for _, escape := range []string{`\u003c`, `\u003e`, `\u0026`, `\u2028`, `\u2029`} {
+		if strings.Contains(out, escape) {
+			t.Errorf("output contains the escape %s:\n%s", escape, out)
+		}
+	}
+}
+
+func TestRoundTrip_UnknownFieldNumbersVerbatim(t *testing.T) {
+	// An unknown field's numbers come back exactly as written, never
+	// normalised through a float.
+	input := `{"d-version":"1.1","x-numbers":[1e3,1.0,-0,12345678901234567890,0.1000]}`
+	c, err := decodeString(t, input)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	for _, num := range []string{"1e3", "1.0", "-0", "12345678901234567890", "0.1000"} {
+		if !strings.Contains(buf.String(), "\t"+num) {
+			t.Errorf("number %s not written verbatim:\n%s", num, buf.String())
+		}
+	}
+}
+
+func TestRoundTrip_UnknownFieldStringsEqualInValue(t *testing.T) {
+	// An unknown field's strings may change spelling (an escape is written as
+	// its character) but never value.
+	input := `{"d-version":"1.1","x-strings":["\u00e9\t\"\\\/","plain","\ud83d\ude00"]}`
+	c, err := decodeString(t, input)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	m := encodeToMap(t, c)
+	got := m["x-strings"].([]any)
+	want := []any{"é\t\"\\/", "plain", "😀"}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("x-strings = %q, want %q", got, want)
+	}
+}
+
+func TestEncode_IndentedWithTabAndEndsWithNewline(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Encode(&Canvas{Nodes: []*Node{{ID: "n", Type: "text"}}}, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	out := buf.String()
+	if !strings.HasPrefix(out, "{\n\t\"d-version\": ") {
+		t.Errorf("output is not indented with a tab:\n%s", out)
+	}
+	if !strings.Contains(out, "\n\t\t{\n\t\t\t\"id\": \"n\"") {
+		t.Errorf("nested objects are not indented with tabs:\n%s", out)
+	}
+	if !strings.HasSuffix(out, "}\n") || strings.HasSuffix(out, "\n\n") {
+		t.Errorf("output does not end with exactly one newline: %q", out)
+	}
+}
+
+func TestEncode_RejectsInvalidUTF8(t *testing.T) {
+	// Writing is as strict as reading: text that is not valid UTF-8 is an
+	// error, never silently replaced.
+	c := &Canvas{Nodes: []*Node{{ID: "n", Type: "text", Text: "a\xffb"}}}
+	err := Encode(c, &bytes.Buffer{})
+	if err == nil {
+		t.Fatal("Encode of invalid UTF-8 text succeeded, want an error")
+	}
+	if !strings.Contains(err.Error(), `field "text"`) {
+		t.Errorf("error %q does not name the text field", err)
 	}
 }

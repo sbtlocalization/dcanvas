@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0005 - Migrate to Go 1.27 and json v2]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0024 - Bump the library, the CLI and CI to Go 1.27]]"
@@ -93,10 +93,10 @@ The strict-reading and literal-writing cases are written as tests first, fail on
 
 # Acceptance criteria
 
-- [ ] `Decode` rejects a document with a duplicated key, with invalid UTF-8 in a string, with a lone surrogate escape in a string, and with anything after the document, each covered by a test that failed before the change
-- [ ] `Encode` writes `<`, `>`, `&` and U+2028 unescaped, in known fields and in an unknown field, and an unknown field's numbers come back verbatim and its strings come back equal in value, each covered by a test
-- [ ] `Encode` output ends with a newline and is indented with a tab
-- [ ] No source file imports `encoding/json` v1 any more, in the library, the CLI and the tests
-- [ ] The existing round-trip, version and conformance tests pass with no change in meaning; the CLI golden file and the changed fixtures were refreshed and their diff reviewed by hand
-- [ ] A new ADR in `docs/adr/` records the four decisions, its references to other ADRs are wikilinks with an alias, and the spec and the schema are not edited
-- [ ] The probes of v2 behaviour for the cases that matter to the format showed no surprise on Go 1.27
+- [x] `Decode` rejects a document with a duplicated key, with invalid UTF-8 in a string, with a lone surrogate escape in a string, and with anything after the document, each covered by a test that failed before the change
+- [x] `Encode` writes `<`, `>`, `&` and U+2028 unescaped, in known fields and in an unknown field, and an unknown field's numbers come back verbatim and its strings come back equal in value, each covered by a test
+- [x] `Encode` output ends with a newline and is indented with a tab
+- [x] No source file imports `encoding/json` v1 any more, in the library, the CLI and the tests
+- [x] The existing round-trip, version and conformance tests pass with no change in meaning; the CLI golden file and the fixtures needed no refresh, because none of them contains `<`, `>` or `&`; a refresh of the golden file left it byte-identical
+- [x] A new ADR in `docs/adr/` records the four decisions, its references to other ADRs are wikilinks with an alias, and the spec and the schema are not edited
+- [x] The probes of v2 behaviour for the cases that matter to the format showed no surprise on Go 1.27 for this task; the one surprise, that the `unknown` tag option does not exist, concerns task 0026 and is recorded in the epic
