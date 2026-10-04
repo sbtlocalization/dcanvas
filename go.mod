@@ -5,7 +5,7 @@
 
 module github.com/sbtlocalization/dcanvas
 
-go 1.25
+go 1.27
 
 require (
 	github.com/nulab/autog v0.11.0

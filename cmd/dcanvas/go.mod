@@ -5,7 +5,7 @@
 
 module github.com/sbtlocalization/dcanvas/cmd/dcanvas
 
-go 1.25.0
+go 1.27
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0

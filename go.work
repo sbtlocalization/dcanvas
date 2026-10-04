@@ -6,7 +6,7 @@
 // This workspace binds the two Go modules of this repository during
 // co-development so in-repo builds resolve the library locally, without a
 // replace directive (see ADR-0012). A library consumer never sees this file.
-go 1.25.0
+go 1.27
 
 use (
 	.

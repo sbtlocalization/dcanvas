@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0005 - Migrate to Go 1.27 and json v2]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
 kind: Task
@@ -90,8 +90,8 @@ The library, the CLI and CI build and test on Go 1.27, with no change in behavio
 
 # Acceptance criteria
 
-- [ ] Both `go.mod` files and `go.work` declare Go 1.27
-- [ ] `go vet` and `go test` pass for the library and for the CLI on a Go 1.27 toolchain
-- [ ] CI passes on Go 1.27 without a hard-coded version outside `go.mod`
-- [ ] No source file imports `encoding/json/v2` or `jsontext` yet, and no test expectation was edited
-- [ ] The probes of v2 behaviour were re-run on Go 1.27, and any difference from the Go 1.25 results is written into the report for the next task
+- [x] Both `go.mod` files and `go.work` declare Go 1.27
+- [x] `go vet` and `go test` pass for the library and for the CLI on a Go 1.27 toolchain
+- [x] CI passes on Go 1.27 without a hard-coded version outside `go.mod`
+- [x] No source file imports `encoding/json/v2` or `jsontext` yet, and no test expectation was edited
+- [x] The probes of v2 behaviour were re-run on Go 1.27, and any difference from the Go 1.25 results is written into the report for the next task
