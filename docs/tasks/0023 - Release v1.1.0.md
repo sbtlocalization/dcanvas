@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0004 - dCanvas 1.1 alternative characters and a character text ID]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0022 - Show name text IDs and alternative speakers in the viewer]]"
@@ -91,6 +91,6 @@ dCanvas 1.1 is released: the module is tagged `v1.1.0`, since a new format minor
 
 # Acceptance criteria
 
-- [ ] The module is tagged `v1.1.0` and `Version` is `"1.1"`
-- [ ] `cmd/dcanvas` depends on `v1.1.0`
-- [ ] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass at the tag
+- [x] The module is tagged `v1.1.0` and `Version` is `"1.1"`
+- [x] `cmd/dcanvas` depends on `v1.1.0`
+- [x] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass at the tag
