@@ -138,3 +138,47 @@ func TestCharacter_DecodesTextID(t *testing.T) {
 		t.Errorf("textId should be a typed field, not a preserved extra")
 	}
 }
+
+func TestAlternativeCharacters_RoundTrip(t *testing.T) {
+	input := `{
+		"d-version": "1.1",
+		"nodes": [
+			{
+				"id": "n1", "type": "text",
+				"x": 0, "y": 0, "width": 400, "height": 300,
+				"text": "hi",
+				"d-character": {"name": "Abela"},
+				"d-alternativeCharacters": [
+					{"name": "Guard", "textId": "#7", "mood": "angry"},
+					{"name": "Captain"}
+				]
+			}
+		],
+		"edges": []
+	}`
+	c, err := decodeString(t, input)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	alts := c.Nodes[0].AlternativeCharacters
+	if len(alts) != 2 || alts[0].Name != "Guard" || alts[0].TextID != "#7" || alts[1].Name != "Captain" {
+		t.Fatalf("alternatives not decoded: %+v", alts)
+	}
+	node := encodeToMap(t, c)["nodes"].([]any)[0].(map[string]any)
+	out, ok := node["d-alternativeCharacters"].([]any)
+	if !ok || len(out) != 2 {
+		t.Fatalf("d-alternativeCharacters not encoded: %v", node["d-alternativeCharacters"])
+	}
+	first := out[0].(map[string]any)
+	if first["name"] != "Guard" || first["textId"] != "#7" || first["mood"] != "angry" {
+		t.Errorf("first alternative lost fields: %v", first)
+	}
+}
+
+func TestAlternativeCharacters_AbsentWhenEmpty(t *testing.T) {
+	c := &Canvas{Nodes: []*Node{{ID: "n", Type: "text", Character: &Character{Name: "A"}}}}
+	node := encodeToMap(t, c)["nodes"].([]any)[0].(map[string]any)
+	if _, ok := node["d-alternativeCharacters"]; ok {
+		t.Errorf("empty alternatives must not be encoded: %v", node)
+	}
+}

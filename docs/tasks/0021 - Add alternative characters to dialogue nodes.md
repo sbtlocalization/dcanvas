@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0004 - dCanvas 1.1 alternative characters and a character's text ID]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0020 - Open dCanvas 1.1 with a text ID for a character's name]]"
@@ -95,9 +95,9 @@ The library models it as a typed list of `Character` on `Node`. `Validate` repor
 
 # Acceptance criteria
 
-- [ ] The 1.1 spec and schema define `d-alternativeCharacters` as an optional non-empty list of `d-character` objects on a node, require `name` in each, and allow it only together with `d-character`
-- [ ] The 1.1 spec states that exactly one of `d-character` and the alternatives speaks the line, that `d-character` has no precedence beyond being shown first, and that the order of the alternatives carries no meaning
-- [ ] `Node` has a typed list of alternative characters that decodes from and encodes to `d-alternativeCharacters`, with unknown keys of each alternative preserved
-- [ ] `Validate` reports an alternative without a name, and a node with alternatives but no `d-character`, and reports nothing for a well-formed node
-- [ ] The library's output with alternatives validates against the 1.1 schema, and also against the 1.0 schema
-- [ ] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass
+- [x] The 1.1 spec and schema define `d-alternativeCharacters` as an optional non-empty list of `d-character` objects on a node, require `name` in each, and allow it only together with `d-character`
+- [x] The 1.1 spec states that exactly one of `d-character` and the alternatives speaks the line, that `d-character` has no precedence beyond being shown first, and that the order of the alternatives carries no meaning
+- [x] `Node` has a typed list of alternative characters that decodes from and encodes to `d-alternativeCharacters`, with unknown keys of each alternative preserved
+- [x] `Validate` reports an alternative without a name, and a node with alternatives but no `d-character`, and reports nothing for a well-formed node
+- [x] The library's output with alternatives validates against the 1.1 schema, and also against the 1.0 schema
+- [x] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass

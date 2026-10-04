@@ -75,14 +75,15 @@ type Node struct {
 	Text   string // spoken content (literal text)
 
 	// Layer 1 — dialogue vocabulary. All optional.
-	DomainID  string     // engine/domain id (distinct from the canvas ID)
-	Kind      NodeKind   // d-kind: KindLine | KindReply
-	Role      string     // d-role: open, project-defined label
-	TextID    string     // d-textId: string-table reference for Text
-	Condition string     // d-condition: engine condition gating this node
-	Action    string     // d-action: engine action executed at this node
-	Sound     string     // d-sound: sound resource for this node's line
-	Character *Character // d-character: speaker information
+	DomainID              string       // engine/domain id (distinct from the canvas ID)
+	Kind                  NodeKind     // d-kind: KindLine | KindReply
+	Role                  string       // d-role: open, project-defined label
+	TextID                string       // d-textId: string-table reference for Text
+	Condition             string       // d-condition: engine condition gating this node
+	Action                string       // d-action: engine action executed at this node
+	Sound                 string       // d-sound: sound resource for this node's line
+	Character             *Character   // d-character: speaker information
+	AlternativeCharacters []*Character // d-alternativeCharacters: other possible speakers; requires Character
 
 	// extra holds unrecognised node fields (including Layer 2 x- fields),
 	// preserved verbatim.
@@ -393,6 +394,12 @@ func (n *Node) UnmarshalJSON(data []byte) error {
 		n.Character = &ch
 		delete(raw, "d-character")
 	}
+	if v, ok := raw["d-alternativeCharacters"]; ok {
+		if err := json.Unmarshal(v, &n.AlternativeCharacters); err != nil {
+			return fmt.Errorf("dcanvas: field %q: %w", "d-alternativeCharacters", err)
+		}
+		delete(raw, "d-alternativeCharacters")
+	}
 	n.extra = raw
 	return nil
 }
@@ -434,6 +441,11 @@ func (n *Node) MarshalJSON() ([]byte, error) {
 	w.str("d-sound", n.Sound)
 	if n.Character != nil {
 		if err := w.always("d-character", n.Character); err != nil {
+			return nil, err
+		}
+	}
+	if len(n.AlternativeCharacters) > 0 {
+		if err := w.always("d-alternativeCharacters", n.AlternativeCharacters); err != nil {
 			return nil, err
 		}
 	}

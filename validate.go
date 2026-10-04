@@ -20,7 +20,9 @@ import (
 //   - every edge fromNode/toNode references an existing node id;
 //   - d-kind values stay within their closed sets (nodes: line/reply; edges:
 //     normal/loop);
-//   - required fields are present: name on d-character.
+//   - required fields are present: name on d-character and on each
+//     d-alternativeCharacters entry;
+//   - d-alternativeCharacters appears only together with d-character.
 //
 // It deliberately does not check that a text node's text is non-empty: neither
 // JSON Canvas 1.0 nor dCanvas requires text to be non-empty (only present), and
@@ -52,6 +54,20 @@ func Validate(c *Canvas) error {
 		if n.Character != nil && n.Character.Name == "" {
 			problems = append(problems, fmt.Errorf(
 				"dcanvas: node %q has a d-character without a required name", n.ID))
+		}
+		if n.AlternativeCharacters != nil && len(n.AlternativeCharacters) == 0 {
+			problems = append(problems, fmt.Errorf(
+				"dcanvas: node %q has an empty d-alternativeCharacters (want a non-empty list)", n.ID))
+		}
+		for i, alt := range n.AlternativeCharacters {
+			if alt == nil || alt.Name == "" {
+				problems = append(problems, fmt.Errorf(
+					"dcanvas: node %q has a d-alternativeCharacters entry %d without a required name", n.ID, i))
+			}
+		}
+		if len(n.AlternativeCharacters) > 0 && n.Character == nil {
+			problems = append(problems, fmt.Errorf(
+				"dcanvas: node %q has d-alternativeCharacters without a d-character", n.ID))
 		}
 	}
 

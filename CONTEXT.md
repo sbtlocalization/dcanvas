@@ -43,6 +43,7 @@ Preservation is prefix-blind: every unknown field survives a round-trip, whateve
   - `id` — unique *within the file*; edges reference it. The "canvas" id.
   - `d-id` — the engine/domain identifier (e.g. `ABELA[5]`). Its value format is a project convention, not part of the format.
 - **`d-character`** — speaker info (`name`, `textId`, `portrait`, `gender`), an **open object**; projects may add keys, preserved recursively. An absent or empty `portrait` means "no portrait". `textId` (since 1.1) is the string-table reference for `name`; like `d-textId`, its value format is a project convention.
+- **`d-alternativeCharacters`** (since 1.1) — a non-empty list of characters, each shaped like `d-character`, who may speak the line instead of it; allowed only beside `d-character`. Exactly one of `d-character` and the alternatives speaks the line, and the order of the alternatives means nothing. It is not a line spoken by several characters at once.
 - **`d-condition`** — engine condition/trigger gating a node or transition.
 - **`d-action`** — engine action executed at a node.
 - **`d-textId`** — string-table reference for the visible text (`node.text` or `edge.label`). Value format is a project convention.
@@ -67,6 +68,6 @@ The format is consumed across two languages with a one-directional flow (writer 
 ## Status & roadmap
 
 - **dCanvas 1.0 is the first published version of the format** ([[ADR-0013 - Public versioning restarts at 1.0 and internal specs are archived as 0.x|ADR-0013]]). The earlier internal drafts were never published and are archived in `docs/` as **0.1** and **0.2** (historically numbered 1.0 and 2.0). 1.0 is a clean break: a reader knows only `d-version` with major 1 and rejects anything else, including files stamped with the pre-1.0 internal version field — no migration code.
-- **dCanvas 1.1 is the current version.** It only adds fields to 1.0 (the first is `d-character.textId`), so every 1.0 reader keeps working. Spec and schema stay one file per minor ([[ADR-0015 - The schema constrains d-version by major while schema files stay per minor|ADR-0015]]): `spec/dCanvas-1.0.*` keeps describing 1.0, `spec/dCanvas-1.1.*` describes 1.1.
+- **dCanvas 1.1 is the current version.** It only adds fields to 1.0 (`d-character.textId` and `d-alternativeCharacters`), so every 1.0 reader keeps working. Spec and schema stay one file per minor ([[ADR-0015 - The schema constrains d-version by major while schema files stay per minor|ADR-0015]]): `spec/dCanvas-1.0.*` keeps describing 1.0, `spec/dCanvas-1.1.*` describes 1.1.
 - The format lives in its **own repository** — this one is the canonical master spec ([[ADR-0008 - Extract format and library to a separate repository|ADR-0008]]'s "Later" stage, fulfilled by [[ADR-0010 - The JSON Schema is the cross-language contract enforced by writer conformance|ADR-0010]]). The second consumer that triggered the move is the TypeScript reader.
 - A Go writer and a TS+Svelte reader are the two live consumers; neither round-trips. Unknown-field preservation is exercised only via the Obsidian round-trip path.

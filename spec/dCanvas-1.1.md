@@ -29,6 +29,7 @@ dCanvas is **dialogue-only by design** — it describes who says what and how th
 dCanvas 1.1 only adds to 1.0: the structure of every 1.0 document is valid 1.1 structure, and a 1.1 document is structurally a 1.0 document. Both are `1.x` documents and compatible per [Version detection](#version-detection).
 
 - **`d-character.textId`** — an optional string-table reference for the character's `name`. See [`d-character` object](#d-character-object).
+- **`d-alternativeCharacters`** — an optional list of characters who may speak a line instead of `d-character`. See [`d-alternativeCharacters`](#d-alternativecharacters).
 
 ## Extension namespaces
 
@@ -124,6 +125,7 @@ All optional and `d-` prefixed. A `text` node that carries `d-kind` is a dialogu
 | `d-action` | string | Engine action executed when this node is reached |
 | `d-sound` | string | Sound resource for this node's spoken line (may include path/extension) |
 | `d-character` | object | Speaker information — see below |
+| `d-alternativeCharacters` | array of objects | Other characters who may speak the line — see below |
 
 The *value* format of `d-id` and `d-textId` (e.g. `"ABELA[5]"`, `"#2687"`) is a project convention, not part of the format: the spec only says the fields are strings and what they refer to.
 
@@ -139,6 +141,12 @@ Open object — projects may add keys (preserved recursively).
 | `gender` | no | string | Speaker gender (project-defined vocabulary) |
 
 As with `d-textId`, the value format of `textId` is a project convention: the spec only says it is a string and that it refers to `name`.
+
+#### `d-alternativeCharacters`
+
+An optional **non-empty** array of objects, each with the structure of the [`d-character` object](#d-character-object): `name` is required in each, and unknown keys in each are preserved. The field is a sibling of `d-character`, never nested inside it, and MUST appear only on a node that also has `d-character`.
+
+The line is spoken by **exactly one** of `d-character` and the alternatives. A tool that shows only one speaker shows `d-character`, which has no other precedence over the alternatives. The order of the alternatives carries no meaning. The field does not describe a line spoken by several characters at once.
 
 ### Project fields (Layer 2)
 

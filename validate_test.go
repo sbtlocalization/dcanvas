@@ -68,6 +68,31 @@ func TestValidate_Failures(t *testing.T) {
 			mutate:  func(c *Canvas) { c.Nodes[0].Character.Name = "" },
 			wantSub: []string{"n1", "name"},
 		},
+		{
+			name: "alternative without name",
+			mutate: func(c *Canvas) {
+				c.Nodes[0].AlternativeCharacters = []*Character{{Name: "Guard"}, {}}
+			},
+			wantSub: []string{"n1", "d-alternativeCharacters", "name"},
+		},
+		{
+			name:    "empty alternatives list",
+			mutate:  func(c *Canvas) { c.Nodes[0].AlternativeCharacters = []*Character{} },
+			wantSub: []string{"n1", "d-alternativeCharacters", "non-empty"},
+		},
+		{
+			name:    "null alternative entry",
+			mutate:  func(c *Canvas) { c.Nodes[0].AlternativeCharacters = []*Character{nil} },
+			wantSub: []string{"n1", "d-alternativeCharacters", "name"},
+		},
+		{
+			name: "alternatives without d-character",
+			mutate: func(c *Canvas) {
+				c.Nodes[0].Character = nil
+				c.Nodes[0].AlternativeCharacters = []*Character{{Name: "Guard"}}
+			},
+			wantSub: []string{"n1", "d-alternativeCharacters", "d-character"},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -84,6 +109,14 @@ func TestValidate_Failures(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestValidate_AlternativesWellFormed(t *testing.T) {
+	c := wellFormed()
+	c.Nodes[0].AlternativeCharacters = []*Character{{Name: "Guard"}, {Name: "Captain"}}
+	if err := Validate(c); err != nil {
+		t.Fatalf("node with alternatives and d-character should validate, got: %v", err)
 	}
 }
 

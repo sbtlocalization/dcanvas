@@ -8,6 +8,7 @@ package dcanvas
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/santhosh-tekuri/jsonschema/v5"
@@ -71,6 +72,17 @@ func TestConformance_EncodedOutputValidatesAgainstSchema(t *testing.T) {
 					{ID: "n1", Type: "text", X: 0, Y: 0, Width: 400, Height: 300,
 						Text: "My poor Ragefast.", Kind: KindLine,
 						Character: &Character{Name: "Abela the Nymph", TextID: "#1001", Portrait: "abela.png", Gender: "female"}},
+				},
+			},
+		},
+		{
+			name: "line node with alternative characters",
+			canvas: &Canvas{
+				Nodes: []*Node{
+					{ID: "n1", Type: "text", X: 0, Y: 0, Width: 400, Height: 300,
+						Text: "Halt!", Kind: KindLine,
+						Character:             &Character{Name: "Guard"},
+						AlternativeCharacters: []*Character{{Name: "Captain", TextID: "#2"}}},
 				},
 			},
 		},
@@ -237,4 +249,45 @@ func TestConformance_SchemasAcceptMajorOne(t *testing.T) {
 			})
 		}
 	}
+}
+
+// TestConformance_AlternativeCharacters checks the 1.1 schema: a non-empty list
+// of characters with a required name, allowed only beside d-character. A 1.0
+// schema, which does not know the field, accepts a valid document using it.
+func TestConformance_AlternativeCharacters(t *testing.T) {
+	const node = `{"id":"n","type":"text","x":0,"y":0,"width":400,"height":300,"text":"hi",`
+	cases := []struct {
+		name     string
+		fields   string
+		wantPass bool
+	}{
+		{"with d-character", `"d-character":{"name":"A"},"d-alternativeCharacters":[{"name":"B"}]`, true},
+		{"without d-character", `"d-alternativeCharacters":[{"name":"B"}]`, false},
+		{"empty list", `"d-character":{"name":"A"},"d-alternativeCharacters":[]`, false},
+		{"alternative without name", `"d-character":{"name":"A"},"d-alternativeCharacters":[{"textId":"#1"}]`, false},
+		{"not an array", `"d-character":{"name":"A"},"d-alternativeCharacters":{"name":"B"}`, false},
+	}
+	schema := compileSchema(t, schema11)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := `{"d-version":"1.1","nodes":[` + node + tc.fields + `}]}`
+			assertConforms(t, validateJSON(t, schema, []byte(doc)), tc.wantPass, doc)
+		})
+	}
+}
+
+// TestConformance_AlternativeCharactersOutputValidatesAgainstOneZero checks that
+// the library's output with alternatives, additive in 1.1, also conforms to 1.0.
+func TestConformance_AlternativeCharactersOutputValidatesAgainstOneZero(t *testing.T) {
+	data := encodeCanvas(t, &Canvas{
+		Nodes: []*Node{
+			{ID: "n1", Type: "text", Width: 400, Height: 300, Text: "Halt!", Kind: KindLine,
+				Character:             &Character{Name: "Guard"},
+				AlternativeCharacters: []*Character{{Name: "Captain", TextID: "#2"}}},
+		},
+	})
+	if !strings.Contains(string(data), "d-alternativeCharacters") {
+		t.Fatalf("encoded output lacks d-alternativeCharacters:\n%s", data)
+	}
+	assertConforms(t, validateJSON(t, compileSchema(t, schema10), data), true, string(data))
 }
