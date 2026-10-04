@@ -1,5 +1,5 @@
 ---
-status: To do
+status: Done
 priority: 1
 blocked by:
 kind: PRD
