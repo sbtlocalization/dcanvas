@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0004 - dCanvas 1.1 alternative characters and a character's text ID]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0021 - Add alternative characters to dialogue nodes]]"
@@ -91,7 +91,7 @@ The reference CLI's viewer shows what 1.1 adds. The detail view of a node shows 
 
 # Acceptance criteria
 
-- [ ] The detail view shows `textId` of `d-character` when present
-- [ ] The detail view lists every alternative speaker, in document order, with its name and whichever of text ID, portrait and gender it has
-- [ ] The tree view still shows only `d-character`
-- [ ] `go test -C cmd/dcanvas ./...` passes
+- [x] The detail view shows `textId` of `d-character` when present
+- [x] The detail view lists every alternative speaker, in document order, with its name and whichever of text ID, portrait and gender it has
+- [x] The tree view still shows only `d-character`
+- [x] `go test -C cmd/dcanvas ./...` passes

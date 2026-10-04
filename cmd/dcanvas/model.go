@@ -300,6 +300,20 @@ func (m model) renderLine(l line, width int, selected bool) string {
 	}
 }
 
+// renderCharacterFields writes character attributes (TextID, Portrait, Gender)
+// with the given indent prefix.
+func renderCharacterFields(b *strings.Builder, ch *dcanvas.Character, indent string) {
+	if ch.TextID != "" {
+		b.WriteString(indent + detailLabel.Render("Текст ID") + ": " + ch.TextID + "\n")
+	}
+	if ch.Portrait != "" {
+		b.WriteString(indent + detailLabel.Render("Портрет") + ": " + ch.Portrait + "\n")
+	}
+	if ch.Gender != "" {
+		b.WriteString(indent + detailLabel.Render("Стать") + ": " + ch.Gender + "\n")
+	}
+}
+
 // renderDetail draws the detail pane for the selected node: its full
 // (untruncated) text, speaker, dialogue x- fields, and the label of the edge
 // that led to it.
@@ -315,11 +329,16 @@ func (m model) renderDetail(width, height int) string {
 
 	if n.Character != nil && n.Character.Name != "" {
 		b.WriteString("\n" + detailLabel.Render("Мовець") + ": " + n.Character.Name + "\n")
-		if n.Character.Portrait != "" {
-			b.WriteString(detailLabel.Render("Портрет") + ": " + n.Character.Portrait + "\n")
-		}
-		if n.Character.Gender != "" {
-			b.WriteString(detailLabel.Render("Стать") + ": " + n.Character.Gender + "\n")
+		renderCharacterFields(&b, n.Character, "")
+	}
+
+	if len(n.AlternativeCharacters) > 0 {
+		b.WriteString("\n" + detailLabel.Render("Альтернативні мовці") + ":\n")
+		for _, ch := range n.AlternativeCharacters {
+			if ch.Name != "" {
+				b.WriteString("  • " + ch.Name + "\n")
+				renderCharacterFields(&b, ch, "    ")
+			}
 		}
 	}
 
