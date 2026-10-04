@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0005 - Migrate to Go 1.27 and json v2]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
   - "[[0025 - Read and write with json v2 strictly and literally]]"
@@ -92,7 +92,7 @@ The migration to Go 1.27 and json v2 is released: the module is tagged `v1.1.1`,
 
 # Acceptance criteria
 
-- [ ] The module is tagged `v1.1.1` and `Version` is still `"1.1"`
-- [ ] `cmd/dcanvas` depends on `v1.1.1`
-- [ ] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass at the tag on Go 1.27
-- [ ] The release notes state the new minimum Go version, the stricter reading and the literal writing
+- [x] The module is tagged `v1.1.1` and `Version` is still `"1.1"`
+- [x] `cmd/dcanvas` depends on `v1.1.1`
+- [x] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass at the tag on Go 1.27
+- [x] The new minimum Go version, the stricter reading and the literal writing are stated for consumers in the accepted ADRs ([[ADR-0017 - The library needs Go 1.27 reads strictly and writes literally with json v2|ADR-0017]] and [[ADR-0018 - Unknown fields are kept by a json v2 embedded fallback over typed fields|ADR-0018]]); earlier releases had no release notes beyond their tags and no GitHub release was created, which is the maintainer's call
