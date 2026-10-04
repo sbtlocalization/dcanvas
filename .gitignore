@@ -4,6 +4,8 @@
 
 .claude/
 .obsidian/
+.shepard/
+.vscode/
 
 /dcanvas
 /complete
