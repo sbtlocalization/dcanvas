@@ -42,7 +42,8 @@ func TestDecode_VersionGate(t *testing.T) {
 		wantErr bool
 	}{
 		{"v1.0 accepted", `{"d-version":"1.0","nodes":[],"edges":[]}`, false},
-		{"v1.1 accepted (higher minor, same major)", `{"d-version":"1.1"}`, false},
+		{"v1.1 accepted", `{"d-version":"1.1","nodes":[],"edges":[]}`, false},
+		{"v1.2 accepted (higher minor, same major)", `{"d-version":"1.2"}`, false},
 		{"v2.0 rejected", `{"d-version":"2.0","nodes":[],"edges":[]}`, true},
 		{"v4.0 rejected", `{"d-version":"4.0"}`, true},
 		{"missing version rejected", `{"nodes":[],"edges":[]}`, true},
@@ -80,9 +81,10 @@ func TestEncode_VersionContract(t *testing.T) {
 		version string
 		want    string
 	}{
-		{"no version stamped with library version", "", Version},
-		{"same-major minor is preserved", "1.1", "1.1"},
-		{"different major replaced with library version", "9.9", Version},
+		{"no version stamped with library version", "", "1.1"},
+		{"lower same-major minor is preserved", "1.0", "1.0"},
+		{"higher same-major minor is preserved", "1.2", "1.2"},
+		{"different major replaced with library version", "9.9", "1.1"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -105,15 +107,15 @@ func TestEncode_NodesEdgesAlwaysArrays(t *testing.T) {
 }
 
 func TestRoundTrip_PreservesMinorVersion(t *testing.T) {
-	// A 1.1 document must round-trip as 1.1, not be downgraded to the library's
-	// 1.0.
-	c, err := decodeString(t, `{"d-version":"1.1","nodes":[],"edges":[]}`)
+	// A 1.2 document must round-trip as 1.2, not be downgraded to the library's
+	// 1.1.
+	c, err := decodeString(t, `{"d-version":"1.2","nodes":[],"edges":[]}`)
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
 	m := encodeToMap(t, c)
-	if got := m["d-version"]; got != "1.1" {
-		t.Errorf("d-version = %v, want \"1.1\"", got)
+	if got := m["d-version"]; got != "1.2" {
+		t.Errorf("d-version = %v, want \"1.2\"", got)
 	}
 }
 

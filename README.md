@@ -87,8 +87,8 @@ dCanvas (**d**ialogue **canvas**) — це надбудова над [JSON Canva
 ![example](./images/readme-example.png)
 ## Специфікація
 
-- [Специфікація dCanvas 1.0](spec/dCanvas-1.0.md)
-- [JSON Schema](spec/dCanvas-1.0.schema.json) — крос-мовний контракт формату
+- [Специфікація dCanvas 1.1](spec/dCanvas-1.1.md)
+- [JSON Schema](spec/dCanvas-1.1.schema.json) — крос-мовний контракт формату
 
 Типове розширення файлів — `.d.canvas`; компактна альтернатива — `.dcanvas`.
 

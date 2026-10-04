@@ -1,7 +1,7 @@
 ---
 epic: "[[EPIC-0004 - dCanvas 1.1 alternative characters and a character's text ID]]"
 parent:
-status: To do
+status: Done
 priority: 3
 blocked by:
 kind: Task
@@ -96,12 +96,12 @@ The library models it as a typed field of `Character` and its `Version` becomes 
 
 # Acceptance criteria
 
-- [ ] `spec/dCanvas-1.1.md` and `spec/dCanvas-1.1.schema.json` exist, the 1.0 files are unchanged, and the 1.1 schema constrains `d-version` to major 1
-- [ ] The 1.1 spec and schema define `d-character.textId` as an optional string referencing `name`, with a project-defined value format, and the 1.1 spec lists it as the change since 1.0
-- [ ] The spec says nothing about the library, as AGENTS.md requires
-- [ ] `Character` has a typed text ID that decodes from and encodes to `textId`, and a character's unknown keys still round-trip
-- [ ] `Version` is `"1.1"`, and the writer's version contract test asserts it
-- [ ] The library's output validates against the 1.1 schema, and a 1.1 document using `textId` also validates against the 1.0 schema
-- [ ] The same-major tolerance tests and fixture use 1.2 and still pass; a 2.0 document is still rejected
-- [ ] CONTEXT.md and the README refer to the 1.1 spec
-- [ ] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass
+- [x] `spec/dCanvas-1.1.md` and `spec/dCanvas-1.1.schema.json` exist, the 1.0 files are unchanged, and the 1.1 schema constrains `d-version` to major 1
+- [x] The 1.1 spec and schema define `d-character.textId` as an optional string referencing `name`, with a project-defined value format, and the 1.1 spec lists it as the change since 1.0
+- [x] The spec says nothing about the library, as AGENTS.md requires
+- [x] `Character` has a typed text ID that decodes from and encodes to `textId`, and a character's unknown keys still round-trip
+- [x] `Version` is `"1.1"`, and the writer's version contract test asserts it
+- [x] The library's output validates against the 1.1 schema, and a 1.1 document using `textId` also validates against the 1.0 schema
+- [x] The same-major tolerance tests and fixture use 1.2 and still pass; a 2.0 document is still rejected
+- [x] CONTEXT.md and the README refer to the 1.1 spec
+- [x] `go test -C . ./...` and `go test -C cmd/dcanvas ./...` pass

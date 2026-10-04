@@ -3,7 +3,7 @@
 //
 // SPDX-License-Identifier: BlueOak-1.0.0
 
-// Package dcanvas provides types and IO for the dCanvas 1.0 format, a strict
+// Package dcanvas provides types and IO for the dCanvas 1.1 format, a strict
 // superset of JSON Canvas 1.0 for dialogue graphs.
 //
 // Every field belongs to exactly one of three layers:
@@ -30,7 +30,7 @@ import (
 
 // Version is the format version this package reads and writes. Encode always
 // stamps it; Decode rejects any document whose major version differs.
-const Version = "1.0"
+const Version = "1.1"
 
 // NodeKind is a node's d-kind; its values form a closed set.
 type NodeKind string
@@ -48,10 +48,10 @@ const (
 	KindLoop   EdgeKind = "loop"   // a back-edge (a cycle in the dialogue), a rendering hint only
 )
 
-// Canvas is a dCanvas 1.0 document: a single dialogue graph.
+// Canvas is a dCanvas 1.x document: a single dialogue graph.
 type Canvas struct {
-	// Version is the document's d-version. Encode always writes "1.0"
-	// regardless of this value; it is populated on Decode.
+	// Version is the document's d-version, populated on Decode. Encode keeps a
+	// same-major value and otherwise stamps the library Version.
 	Version string
 	Nodes   []*Node
 	Edges   []*Edge
@@ -120,6 +120,7 @@ type Edge struct {
 // known nested object, not specific to d-character.
 type Character struct {
 	Name     string // required
+	TextID   string // optional: string-table reference for Name
 	Portrait string // optional
 	Gender   string // optional
 
@@ -240,6 +241,7 @@ func (ch *Character) UnmarshalJSON(data []byte) error {
 	}
 	for key, dst := range map[string]*string{
 		"name":     &ch.Name,
+		"textId":   &ch.TextID,
 		"portrait": &ch.Portrait,
 		"gender":   &ch.Gender,
 	} {
@@ -257,6 +259,7 @@ func (ch *Character) MarshalJSON() ([]byte, error) {
 	if err := w.always("name", ch.Name); err != nil {
 		return nil, err
 	}
+	w.str("textId", ch.TextID)
 	w.str("portrait", ch.Portrait)
 	w.str("gender", ch.Gender)
 	return w.bytes(ch.extra), nil
@@ -294,7 +297,7 @@ func (c *Canvas) UnmarshalJSON(data []byte) error {
 // arrays so the result is a clean JSON Canvas document.
 //
 // The decoded d-version is preserved when its major matches the
-// library's, so a 1.1 file round-trips as 1.1; a canvas with no version
+// library's, so a 1.2 file round-trips as 1.2; a canvas with no version
 // (hand-built) or a different major is stamped with the library Version.
 func (c *Canvas) MarshalJSON() ([]byte, error) {
 	var w objectWriter

@@ -87,8 +87,8 @@ This is how this dialog could look like in a viewer application:
 ![example](./images/readme-example.png)
 ## Specification
 
-- [dCanvas 1.0 specification](spec/dCanvas-1.0.md)
-- [JSON Schema](spec/dCanvas-1.0.schema.json) — the cross-language contract of the format
+- [dCanvas 1.1 specification](spec/dCanvas-1.1.md)
+- [JSON Schema](spec/dCanvas-1.1.schema.json) — the cross-language contract of the format
 
 The default file extension is `.d.canvas`; the compact alternative is `.dcanvas`.
 
