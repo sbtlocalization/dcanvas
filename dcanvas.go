@@ -15,10 +15,10 @@
 //
 // The package understands Layers 0 and 1 as typed members. Any other field —
 // at the top level, on a node, or on an edge — is unknown to the package and
-// is preserved verbatim on a read → write round-trip (see ADR-0003 and
-// ADR-0005). The package depends on nothing outside the standard library; the
-// dependency direction is one-way (a project depends on dcanvas, never the
-// reverse).
+// is preserved on a read → write round-trip (see ADR-0003 and ADR-0018), in
+// the order of the file. The package depends on nothing outside the standard
+// library; the dependency direction is one-way (a project depends on dcanvas,
+// never the reverse).
 package dcanvas
 
 import (
@@ -26,7 +26,6 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
-	"sort"
 )
 
 // Version is the format version this package reads and writes. Encode always
@@ -53,12 +52,13 @@ const (
 type Canvas struct {
 	// Version is the document's d-version, populated on Decode. Encode keeps a
 	// same-major value and otherwise stamps the library Version.
-	Version string
-	Nodes   []*Node
-	Edges   []*Edge
+	Version string  `json:"d-version"`
+	Nodes   []*Node `json:"nodes"`
+	Edges   []*Edge `json:"edges"`
 
-	// extra holds unrecognised top-level fields, preserved verbatim.
-	extra map[string]jsontext.Value
+	// extra holds unrecognised top-level fields, preserved verbatim as a JSON
+	// object in the order of the file.
+	extra jsontext.Value
 }
 
 // Node is a canvas node. Dialogue semantics (Layer 1) attach to text nodes
@@ -66,108 +66,70 @@ type Canvas struct {
 // link / group nodes are opaque to dialogue logic. All are preserved.
 type Node struct {
 	// Layer 0 — JSON Canvas core.
-	ID     string // canvas-local id; edges reference it via fromNode/toNode
-	Type   string // "text" for dialogue nodes
-	X      int
-	Y      int
-	Width  int
-	Height int
-	Color  string // optional
-	Text   string // spoken content (literal text)
+	ID     string `json:"id"`              // canvas-local id; edges reference it via fromNode/toNode
+	Type   string `json:"type"`            // "text" for dialogue nodes
+	X      int    `json:"x"`               //
+	Y      int    `json:"y"`               //
+	Width  int    `json:"width"`           //
+	Height int    `json:"height"`          //
+	Color  string `json:"color,omitempty"` // optional
+	Text   string `json:"text,omitempty"`  // spoken content (literal text); always written on a text node
 
 	// Layer 1 — dialogue vocabulary. All optional.
-	DomainID              string       // engine/domain id (distinct from the canvas ID)
-	Kind                  NodeKind     // d-kind: KindLine | KindReply
-	Role                  string       // d-role: open, project-defined label
-	TextID                string       // d-textId: string-table reference for Text
-	Condition             string       // d-condition: engine condition gating this node
-	Action                string       // d-action: engine action executed at this node
-	Sound                 string       // d-sound: sound resource for this node's line
-	Character             *Character   // d-character: speaker information
-	AlternativeCharacters []*Character // d-alternativeCharacters: other possible speakers; requires Character
+	DomainID              string       `json:"d-id,omitempty"`                    // engine/domain id (distinct from the canvas ID)
+	Kind                  NodeKind     `json:"d-kind,omitempty"`                  // d-kind: KindLine | KindReply
+	Role                  string       `json:"d-role,omitempty"`                  // d-role: open, project-defined label
+	TextID                string       `json:"d-textId,omitempty"`                // d-textId: string-table reference for Text
+	Condition             string       `json:"d-condition,omitempty"`             // d-condition: engine condition gating this node
+	Action                string       `json:"d-action,omitempty"`                // d-action: engine action executed at this node
+	Sound                 string       `json:"d-sound,omitempty"`                 // d-sound: sound resource for this node's line
+	Character             *Character   `json:"d-character,omitzero"`              // d-character: speaker information
+	AlternativeCharacters []*Character `json:"d-alternativeCharacters,omitempty"` // d-alternativeCharacters: other possible speakers; requires Character
 
 	// extra holds unrecognised node fields (including Layer 2 x- fields),
-	// preserved verbatim.
-	extra map[string]jsontext.Value
+	// preserved verbatim as a JSON object in the order of the file.
+	extra jsontext.Value
 }
 
 // Edge is a connection between two nodes.
 type Edge struct {
 	// Layer 0 — JSON Canvas core.
-	ID       string
-	FromNode string
-	FromSide string // optional: "top" | "right" | "bottom" | "left"
-	FromEnd  string // optional: "none" (default) | "arrow"
-	ToNode   string
-	ToSide   string // optional
-	ToEnd    string // optional: "arrow" (default) | "none"
-	Color    string // optional
-	Label    string // optional: player-facing choice text
+	ID       string `json:"id"`                 //
+	FromNode string `json:"fromNode"`           //
+	FromSide string `json:"fromSide,omitempty"` // optional: "top" | "right" | "bottom" | "left"
+	FromEnd  string `json:"fromEnd,omitempty"`  // optional: "none" (default) | "arrow"
+	ToNode   string `json:"toNode"`             //
+	ToSide   string `json:"toSide,omitempty"`   // optional
+	ToEnd    string `json:"toEnd,omitempty"`    // optional: "arrow" (default) | "none"
+	Color    string `json:"color,omitempty"`    // optional
+	Label    string `json:"label,omitempty"`    // optional: player-facing choice text
 
 	// Layer 1 — dialogue vocabulary. All optional.
-	DomainID  string   // engine/domain id
-	Kind      EdgeKind // d-kind: KindNormal | KindLoop
-	Role      string   // d-role: open, project-defined label
-	Condition string   // d-condition: engine condition gating this transition
-	TextID    string   // d-textId: string-table reference for Label
+	DomainID  string   `json:"d-id,omitempty"`        // engine/domain id
+	Kind      EdgeKind `json:"d-kind,omitempty"`      // d-kind: KindNormal | KindLoop
+	Role      string   `json:"d-role,omitempty"`      // d-role: open, project-defined label
+	Condition string   `json:"d-condition,omitempty"` // d-condition: engine condition gating this transition
+	TextID    string   `json:"d-textId,omitempty"`    // d-textId: string-table reference for Label
 
-	// extra holds unrecognised edge fields, preserved verbatim.
-	extra map[string]jsontext.Value
+	// extra holds unrecognised edge fields, preserved verbatim as a JSON object
+	// in the order of the file.
+	extra jsontext.Value
 }
 
 // Character holds speaker information for a dialogue node. It is an open object
 // in the spec: known fields are modelled as typed members, and any other key
-// is preserved verbatim on a round-trip via the same catch-all pattern used by
-// Node and Edge. This makes recursive preservation reusable for any future
-// known nested object, not specific to d-character.
+// is preserved verbatim on a round-trip, the same way as on Node and Edge. This
+// makes recursive preservation reusable for any future known nested object,
+// not specific to d-character.
 type Character struct {
-	Name     string // required
-	TextID   string // optional: string-table reference for Name
-	Portrait string // optional
-	Gender   string // optional
+	Name     string `json:"name"`               // required
+	TextID   string `json:"textId,omitempty"`   // optional: string-table reference for Name
+	Portrait string `json:"portrait,omitempty"` // optional
+	Gender   string `json:"gender,omitempty"`   // optional
 
-	// extra holds unrecognised character fields, preserved verbatim.
-	extra map[string]jsontext.Value
-}
-
-// --- preservation helpers ---------------------------------------------------
-
-// objectWriter builds a JSON object that emits known fields in a fixed,
-// human-friendly order (rather than the alphabetical order json.Marshal gives a
-// map), then appends any preserved unknown fields. This keeps round-trip
-// preservation while producing readable, JSON-Canvas-conventional output.
-type objectWriter struct {
-	fields []field
-	err    error // the first marshalling error, reported by bytes
-}
-
-type field struct {
-	key string
-	val jsontext.Value
-}
-
-// always marshals a value and always emits it (used for required fields). A
-// value that fails to marshal, such as a string that is not valid UTF-8, is
-// also remembered, so that bytes reports it even where the caller ignores it.
-func (w *objectWriter) always(key string, val any) error {
-	b, err := json.Marshal(val)
-	if err != nil {
-		err = fmt.Errorf("dcanvas: field %q: %w", key, err)
-		if w.err == nil {
-			w.err = err
-		}
-		return err
-	}
-	w.fields = append(w.fields, field{key, b})
-	return nil
-}
-
-// str emits a string field only when it is non-empty (omitempty).
-func (w *objectWriter) str(key, val string) {
-	if val == "" {
-		return
-	}
-	_ = w.always(key, val) // a failure is reported by bytes
+	// extra holds unrecognised character fields, preserved verbatim as a JSON
+	// object in the order of the file.
+	extra jsontext.Value
 }
 
 // validKind reports whether a d-kind value is empty (the field is optional) or
@@ -178,133 +140,184 @@ func validKind[K ~string](val, a, b K) bool {
 	return val == "" || val == a || val == b
 }
 
-// bytes serialises the ordered known fields followed by the preserved unknown
-// fields (sorted for determinism, since their original order is not retained).
-// It fails with the first field that could not be marshalled.
-func (w *objectWriter) bytes(extra map[string]jsontext.Value) ([]byte, error) {
-	if w.err != nil {
-		return nil, w.err
-	}
-	var buf bytes.Buffer
-	buf.WriteByte('{')
-	first := true
-	emit := func(k string, v jsontext.Value) {
-		if !first {
-			buf.WriteByte(',')
-		}
-		first = false
-		kb, _ := json.Marshal(k)
-		buf.Write(kb)
-		buf.WriteByte(':')
-		buf.Write(v)
-	}
-	written := make(map[string]bool, len(w.fields))
-	for _, f := range w.fields {
-		emit(f.key, f.val)
-		written[f.key] = true
-	}
-	if len(extra) > 0 {
-		keys := make([]string, 0, len(extra))
-		for k := range extra {
-			if !written[k] {
-				keys = append(keys, k)
-			}
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			emit(k, extra[k])
-		}
-	}
-	buf.WriteByte('}')
-	return buf.Bytes(), nil
+// --- preservation -----------------------------------------------------------
+
+// The typed fields of each type are read and written through a copy of the
+// type without its JSON methods (canvasFields, nodeFields, …), so that json v2
+// handles them by their tags and does not call the methods again.
+type (
+	canvasFields    Canvas
+	nodeFields      Node
+	edgeFields      Edge
+	characterFields Character
+)
+
+// textNodeFields is nodeFields for a text node: the schema requires text on a
+// text node, so it is written even when empty. Its fields must match Node's,
+// tags aside; the conversion from Node stops compiling if they drift apart.
+type textNodeFields struct {
+	ID                    string       `json:"id"`
+	Type                  string       `json:"type"`
+	X                     int          `json:"x"`
+	Y                     int          `json:"y"`
+	Width                 int          `json:"width"`
+	Height                int          `json:"height"`
+	Color                 string       `json:"color,omitempty"`
+	Text                  string       `json:"text"`
+	DomainID              string       `json:"d-id,omitempty"`
+	Kind                  NodeKind     `json:"d-kind,omitempty"`
+	Role                  string       `json:"d-role,omitempty"`
+	TextID                string       `json:"d-textId,omitempty"`
+	Condition             string       `json:"d-condition,omitempty"`
+	Action                string       `json:"d-action,omitempty"`
+	Sound                 string       `json:"d-sound,omitempty"`
+	Character             *Character   `json:"d-character,omitzero"`
+	AlternativeCharacters []*Character `json:"d-alternativeCharacters,omitempty"`
+	extra                 jsontext.Value
 }
 
-// popString unmarshals a known string field out of raw and removes its key, so
-// that whatever remains in raw is genuinely unknown.
-func popString[S ~string](raw map[string]jsontext.Value, key string, dst *S) error {
-	if v, ok := raw[key]; ok {
-		if err := json.Unmarshal(v, dst); err != nil {
-			return fmt.Errorf("dcanvas: field %q: %w", key, err)
-		}
-		delete(raw, key)
+// object is the JSON shape of a type with preserved unknown fields: the typed
+// fields of F, followed by the members no typed field owns. Extra is the
+// embedded fallback of json v2, which collects those members on reading and
+// writes them back, both in the order of the file.
+type object[F any] struct {
+	Fields *F             `json:",embed"`
+	Extra  jsontext.Value `json:",embed"`
+}
+
+func marshalObject[F any](fields *F, extra jsontext.Value) ([]byte, error) {
+	return json.Marshal(object[F]{fields, extra})
+}
+
+// unmarshalObject decodes data into fields and returns the unknown members.
+func unmarshalObject[F any](data []byte, fields *F) (jsontext.Value, error) {
+	obj := object[F]{Fields: fields}
+	err := json.Unmarshal(data, &obj)
+	return obj.Extra, err
+}
+
+// owns reports whether a typed field of F owns key, by asking json v2 itself:
+// a member it does not collect as unknown belongs to a typed field. A key that
+// cannot be written, such as one that is not valid UTF-8, is an error.
+func owns[F any](key string) (bool, error) {
+	probe, err := json.Marshal(map[string]any{key: nil})
+	if err != nil {
+		return false, err
+	}
+	extra, err := unmarshalObject(probe, new(F))
+	if err != nil {
+		return false, err
+	}
+	return len(extra) == 0, nil
+}
+
+// SetExtra attaches a Layer 2 (project-specific) field to the node by
+// JSON-marshaling val. It is preserved verbatim on encode and survives a
+// round-trip through Decode, the same as any other unrecognised field. A key
+// owned by a typed field is ignored, even when that typed field is empty and
+// so not written: the typed field always wins.
+func (n *Node) SetExtra(key string, val any) error {
+	return setExtra(&n.extra, owns[nodeFields], key, val)
+}
+
+// SetExtra attaches a Layer 2 (project-specific) field to the edge; the
+// contract is the same as Node.SetExtra, so a key owned by a typed field is
+// ignored even when that typed field is empty.
+func (e *Edge) SetExtra(key string, val any) error {
+	return setExtra(&e.extra, owns[edgeFields], key, val)
+}
+
+// setExtra sets key to val among the unknown members in extra, in the place
+// of an existing key or else after the others. A key a typed field owns is
+// left out, since json v2 rejects a duplicated key on writing where v1 let
+// the typed field win.
+func setExtra(extra *jsontext.Value, owns func(string) (bool, error), key string, val any) error {
+	if err := setMember(extra, owns, key, val); err != nil {
+		return fmt.Errorf("dcanvas: field %q: %w", key, err)
 	}
 	return nil
 }
 
-// popInt is popString's integer counterpart.
-func popInt(raw map[string]jsontext.Value, key string, dst *int) error {
-	if v, ok := raw[key]; ok {
-		if err := json.Unmarshal(v, dst); err != nil {
-			return fmt.Errorf("dcanvas: field %q: %w", key, err)
-		}
-		delete(raw, key)
+func setMember(extra *jsontext.Value, owns func(string) (bool, error), key string, val any) error {
+	// Deterministic keeps the keys of a map value sorted, as v1 did, so the
+	// same value always writes the same bytes.
+	b, err := json.Marshal(val, json.Deterministic(true))
+	if err != nil {
+		return err
 	}
+	if owned, err := owns(key); err != nil || owned {
+		return err
+	}
+	var buf bytes.Buffer
+	enc := jsontext.NewEncoder(&buf)
+	write := func(name string, val jsontext.Value) error {
+		if err := enc.WriteToken(jsontext.String(name)); err != nil {
+			return err
+		}
+		return enc.WriteValue(val)
+	}
+	if err := enc.WriteToken(jsontext.BeginObject); err != nil {
+		return err
+	}
+	found := false
+	if len(*extra) > 0 {
+		dec := jsontext.NewDecoder(bytes.NewReader(*extra))
+		if _, err := dec.ReadToken(); err != nil { // the opening '{'
+			return err
+		}
+		for dec.PeekKind() == '"' {
+			tok, err := dec.ReadToken()
+			if err != nil {
+				return err
+			}
+			name := tok.String() // read before ReadValue voids the token
+			v, err := dec.ReadValue()
+			if err != nil {
+				return err
+			}
+			if name == key {
+				v, found = b, true
+			}
+			if err := write(name, v); err != nil {
+				return err
+			}
+		}
+	}
+	if !found {
+		if err := write(key, b); err != nil {
+			return err
+		}
+	}
+	if err := enc.WriteToken(jsontext.EndObject); err != nil {
+		return err
+	}
+	*extra = bytes.TrimSpace(buf.Bytes())
 	return nil
 }
 
 // --- Character IO -----------------------------------------------------------
 
-// UnmarshalJSON decodes a character, keeping any unrecognised field in a
-// catch-all so nested unknown keys survive a round-trip.
-func (ch *Character) UnmarshalJSON(data []byte) error {
-	var raw map[string]jsontext.Value
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	for key, dst := range map[string]*string{
-		"name":     &ch.Name,
-		"textId":   &ch.TextID,
-		"portrait": &ch.Portrait,
-		"gender":   &ch.Gender,
-	} {
-		if err := popString(raw, key, dst); err != nil {
-			return err
-		}
-	}
-	ch.extra = raw
-	return nil
+// UnmarshalJSON decodes a character, keeping any unrecognised field so nested
+// unknown keys survive a round-trip.
+func (ch *Character) UnmarshalJSON(data []byte) (err error) {
+	ch.extra, err = unmarshalObject(data, (*characterFields)(ch))
+	return err
 }
 
-// MarshalJSON encodes a character, merging back any preserved unknown fields.
+// MarshalJSON encodes a character, writing back any preserved unknown fields.
 func (ch *Character) MarshalJSON() ([]byte, error) {
-	var w objectWriter
-	if err := w.always("name", ch.Name); err != nil {
-		return nil, err
-	}
-	w.str("textId", ch.TextID)
-	w.str("portrait", ch.Portrait)
-	w.str("gender", ch.Gender)
-	return w.bytes(ch.extra)
+	return marshalObject((*characterFields)(ch), ch.extra)
 }
 
 // --- Canvas IO --------------------------------------------------------------
 
 // UnmarshalJSON decodes a canvas, keeping any unrecognised top-level field.
-func (c *Canvas) UnmarshalJSON(data []byte) error {
-	var raw map[string]jsontext.Value
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	if err := popString(raw, "d-version", &c.Version); err != nil {
-		return err
-	}
-	if v, ok := raw["nodes"]; ok {
-		if err := json.Unmarshal(v, &c.Nodes); err != nil {
-			return fmt.Errorf("dcanvas: field %q: %w", "nodes", err)
-		}
-		delete(raw, "nodes")
-	}
-	if v, ok := raw["edges"]; ok {
-		if err := json.Unmarshal(v, &c.Edges); err != nil {
-			return fmt.Errorf("dcanvas: field %q: %w", "edges", err)
-		}
-		delete(raw, "edges")
-	}
-	c.extra = raw
-	return nil
+func (c *Canvas) UnmarshalJSON(data []byte) (err error) {
+	c.extra, err = unmarshalObject(data, (*canvasFields)(c))
+	return err
 }
 
-// MarshalJSON encodes a canvas, stamping the format version and merging back
+// MarshalJSON encodes a canvas, stamping the format version and writing back
 // any preserved unknown top-level fields. nodes and edges are always emitted as
 // arrays so the result is a clean JSON Canvas document.
 //
@@ -312,223 +325,44 @@ func (c *Canvas) UnmarshalJSON(data []byte) error {
 // library's, so a 1.2 file round-trips as 1.2; a canvas with no version
 // (hand-built) or a different major is stamped with the library Version.
 func (c *Canvas) MarshalJSON() ([]byte, error) {
-	var w objectWriter
-	version := Version
-	if c.Version != "" && majorVersion(c.Version) == majorVersion(Version) {
-		version = c.Version
+	stamped := *c
+	if c.Version == "" || majorVersion(c.Version) != majorVersion(Version) {
+		stamped.Version = Version
 	}
-	w.str("d-version", version)
-
-	nodes := c.Nodes
-	if nodes == nil {
-		nodes = []*Node{}
-	}
-	if err := w.always("nodes", nodes); err != nil {
-		return nil, err
-	}
-	edges := c.Edges
-	if edges == nil {
-		edges = []*Edge{}
-	}
-	if err := w.always("edges", edges); err != nil {
-		return nil, err
-	}
-	return w.bytes(c.extra)
-}
-
-// SetExtra attaches a Layer 2 (project-specific) field to the node by
-// JSON-marshaling val. It is preserved verbatim on encode and survives a
-// round-trip through Decode, the same as any other unrecognised field; a
-// typed field with the same key always wins.
-func (n *Node) SetExtra(key string, val any) error {
-	return setExtra(&n.extra, key, val)
-}
-
-// SetExtra attaches a Layer 2 (project-specific) field to the edge; the
-// contract is the same as Node.SetExtra.
-func (e *Edge) SetExtra(key string, val any) error {
-	return setExtra(&e.extra, key, val)
-}
-
-func setExtra(extra *map[string]jsontext.Value, key string, val any) error {
-	// Deterministic keeps the keys of a map value sorted, as v1 did, so the
-	// same value always writes the same bytes.
-	b, err := json.Marshal(val, json.Deterministic(true))
-	if err != nil {
-		return fmt.Errorf("dcanvas: field %q: %w", key, err)
-	}
-	if *extra == nil {
-		*extra = make(map[string]jsontext.Value)
-	}
-	(*extra)[key] = b
-	return nil
+	return marshalObject((*canvasFields)(&stamped), c.extra)
 }
 
 // --- Node IO ----------------------------------------------------------------
 
 // UnmarshalJSON decodes a node, keeping any unrecognised field (including
-// Layer 2 x- fields) in a catch-all.
-func (n *Node) UnmarshalJSON(data []byte) error {
-	var raw map[string]jsontext.Value
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	for key, dst := range map[string]*string{
-		"id":          &n.ID,
-		"type":        &n.Type,
-		"color":       &n.Color,
-		"text":        &n.Text,
-		"d-id":        &n.DomainID,
-		"d-role":      &n.Role,
-		"d-textId":    &n.TextID,
-		"d-condition": &n.Condition,
-		"d-action":    &n.Action,
-		"d-sound":     &n.Sound,
-	} {
-		if err := popString(raw, key, dst); err != nil {
-			return err
-		}
-	}
-	if err := popString(raw, "d-kind", &n.Kind); err != nil {
-		return err
-	}
-	for key, dst := range map[string]*int{
-		"x": &n.X, "y": &n.Y, "width": &n.Width, "height": &n.Height,
-	} {
-		if err := popInt(raw, key, dst); err != nil {
-			return err
-		}
-	}
-	if v, ok := raw["d-character"]; ok {
-		var ch Character
-		if err := json.Unmarshal(v, &ch); err != nil {
-			return fmt.Errorf("dcanvas: field %q: %w", "d-character", err)
-		}
-		n.Character = &ch
-		delete(raw, "d-character")
-	}
-	if v, ok := raw["d-alternativeCharacters"]; ok {
-		if err := json.Unmarshal(v, &n.AlternativeCharacters); err != nil {
-			return fmt.Errorf("dcanvas: field %q: %w", "d-alternativeCharacters", err)
-		}
-		delete(raw, "d-alternativeCharacters")
-	}
-	n.extra = raw
-	return nil
+// Layer 2 x- fields).
+func (n *Node) UnmarshalJSON(data []byte) (err error) {
+	n.extra, err = unmarshalObject(data, (*nodeFields)(n))
+	return err
 }
 
-// MarshalJSON encodes a node, validating d-kind and merging back any preserved
-// unknown fields.
+// MarshalJSON encodes a node, writing back any preserved unknown fields. d-kind
+// is written verbatim; the closed-set check is Validate's job, not the
+// writer's (a decoded file's value must round-trip even if unrecognised).
 func (n *Node) MarshalJSON() ([]byte, error) {
-	var w objectWriter
-
-	// Layer 0 — required geometry/identity always emitted, in canvas order.
-	if err := w.always("id", n.ID); err != nil {
-		return nil, err
-	}
-	if err := w.always("type", n.Type); err != nil {
-		return nil, err
-	}
-	_ = w.always("x", n.X)
-	_ = w.always("y", n.Y)
-	_ = w.always("width", n.Width)
-	_ = w.always("height", n.Height)
-	w.str("color", n.Color)
-	// The schema requires text on text-type nodes, so a text node always emits
-	// its text field (even when empty); other node types keep text optional.
 	if n.Type == "text" {
-		_ = w.always("text", n.Text)
-	} else {
-		w.str("text", n.Text)
+		return marshalObject((*textNodeFields)(n), n.extra)
 	}
-
-	// Layer 1 — optional dialogue vocabulary. d-kind is written verbatim; the
-	// closed-set check is Validate's job, not the writer's (a decoded file's
-	// value must round-trip even if unrecognised).
-	w.str("d-id", n.DomainID)
-	w.str("d-kind", string(n.Kind))
-	w.str("d-role", n.Role)
-	w.str("d-textId", n.TextID)
-	w.str("d-condition", n.Condition)
-	w.str("d-action", n.Action)
-	w.str("d-sound", n.Sound)
-	if n.Character != nil {
-		if err := w.always("d-character", n.Character); err != nil {
-			return nil, err
-		}
-	}
-	if len(n.AlternativeCharacters) > 0 {
-		if err := w.always("d-alternativeCharacters", n.AlternativeCharacters); err != nil {
-			return nil, err
-		}
-	}
-	return w.bytes(n.extra)
+	return marshalObject((*nodeFields)(n), n.extra)
 }
 
 // --- Edge IO ----------------------------------------------------------------
 
-// UnmarshalJSON decodes an edge, keeping any unrecognised field in a catch-all.
-func (e *Edge) UnmarshalJSON(data []byte) error {
-	var raw map[string]jsontext.Value
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	for key, dst := range map[string]*string{
-		"id":          &e.ID,
-		"fromNode":    &e.FromNode,
-		"fromSide":    &e.FromSide,
-		"fromEnd":     &e.FromEnd,
-		"toNode":      &e.ToNode,
-		"toSide":      &e.ToSide,
-		"toEnd":       &e.ToEnd,
-		"color":       &e.Color,
-		"label":       &e.Label,
-		"d-id":        &e.DomainID,
-		"d-role":      &e.Role,
-		"d-condition": &e.Condition,
-		"d-textId":    &e.TextID,
-	} {
-		if err := popString(raw, key, dst); err != nil {
-			return err
-		}
-	}
-	if err := popString(raw, "d-kind", &e.Kind); err != nil {
-		return err
-	}
-	e.extra = raw
-	return nil
+// UnmarshalJSON decodes an edge, keeping any unrecognised field.
+func (e *Edge) UnmarshalJSON(data []byte) (err error) {
+	e.extra, err = unmarshalObject(data, (*edgeFields)(e))
+	return err
 }
 
-// MarshalJSON encodes an edge, validating d-kind and merging back any preserved
-// unknown fields.
+// MarshalJSON encodes an edge, writing back any preserved unknown fields; like
+// Node.MarshalJSON, it writes d-kind verbatim.
 func (e *Edge) MarshalJSON() ([]byte, error) {
-	var w objectWriter
-
-	// Layer 0 — required identity/endpoints first, then optional geometry.
-	if err := w.always("id", e.ID); err != nil {
-		return nil, err
-	}
-	if err := w.always("fromNode", e.FromNode); err != nil {
-		return nil, err
-	}
-	w.str("fromSide", e.FromSide)
-	w.str("fromEnd", e.FromEnd)
-	if err := w.always("toNode", e.ToNode); err != nil {
-		return nil, err
-	}
-	w.str("toSide", e.ToSide)
-	w.str("toEnd", e.ToEnd)
-	w.str("color", e.Color)
-	w.str("label", e.Label)
-
-	// Layer 1 — optional dialogue vocabulary. d-kind is written verbatim (see
-	// Node.MarshalJSON); the closed-set check is Validate's job.
-	w.str("d-id", e.DomainID)
-	w.str("d-kind", string(e.Kind))
-	w.str("d-role", e.Role)
-	w.str("d-condition", e.Condition)
-	w.str("d-textId", e.TextID)
-	return w.bytes(e.extra)
+	return marshalObject((*edgeFields)(e), e.extra)
 }
 
 // HasOverlappingNodes reports whether any two nodes in the canvas have

@@ -10,6 +10,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -174,14 +175,28 @@ func TestRoundTrip_PreservesUnknownFields(t *testing.T) {
 	if _, ok := m["x-unknownTopLevel"]; !ok {
 		t.Error("unknown top-level field was dropped")
 	}
-	node := m["nodes"].([]any)[0].(map[string]any)
+	nodes, ok := m["nodes"].([]any)
+	if !ok || len(nodes) != 1 {
+		t.Fatalf("nodes = %v, want one node", m["nodes"])
+	}
+	node, ok := nodes[0].(map[string]any)
+	if !ok {
+		t.Fatalf("node = %v, want an object", nodes[0])
+	}
 	if node["x-projectField"] != "keep me" {
 		t.Errorf("unknown node x- field dropped: %v", node["x-projectField"])
 	}
-	if node["unknownStandardLooking"].(float64) != 42 {
+	if got, ok := node["unknownStandardLooking"].(float64); !ok || got != 42 {
 		t.Errorf("unknown standard-looking node field dropped: %v", node["unknownStandardLooking"])
 	}
-	edge := m["edges"].([]any)[0].(map[string]any)
+	edges, ok := m["edges"].([]any)
+	if !ok || len(edges) != 1 {
+		t.Fatalf("edges = %v, want one edge", m["edges"])
+	}
+	edge, ok := edges[0].(map[string]any)
+	if !ok {
+		t.Fatalf("edge = %v, want an object", edges[0])
+	}
 	if _, ok := edge["x-edgeProjectField"]; !ok {
 		t.Error("unknown edge x- field was dropped")
 	}
@@ -268,34 +283,88 @@ func TestRoundTrip_TypedLayer1Faithful(t *testing.T) {
 	}
 }
 
-// objectKeysInOrder reads the keys of the first JSON object found in data, in
-// document order (jsontext.Decoder preserves it, unlike a map). Nested values
-// are skipped so only the immediate object's keys are returned.
-func objectKeysInOrder(t *testing.T, data []byte) []string {
+// keyOrders reads data and returns the keys of every JSON object in it, in
+// document order (jsontext.Decoder preserves it, unlike a map), indexed by the
+// object's JSON pointer: "" for the document, "/nodes/0" for the first node.
+func keyOrders(t *testing.T, data []byte) map[string][]string {
 	t.Helper()
-	start := bytes.IndexByte(data, '{')
-	if start < 0 {
-		t.Fatalf("no object in %q", data)
-	}
-	dec := jsontext.NewDecoder(bytes.NewReader(data[start:]))
-	if _, err := dec.ReadToken(); err != nil { // the opening '{'
-		t.Fatalf("reading object start: %v", err)
-	}
-	var keys []string
-	for dec.PeekKind() != '}' {
-		keyTok, err := dec.ReadToken()
+	out := make(map[string][]string)
+	dec := jsontext.NewDecoder(bytes.NewReader(data))
+	var walk func(ptr string)
+	walk = func(ptr string) {
+		tok, err := dec.ReadToken()
 		if err != nil {
-			t.Fatalf("reading key: %v", err)
+			t.Fatalf("reading %q: %v", ptr, err)
 		}
-		keys = append(keys, keyTok.String())
-		if err := dec.SkipValue(); err != nil {
-			t.Fatalf("skipping value: %v", err)
+		switch tok.Kind() {
+		case '{':
+			out[ptr] = []string{}
+			for dec.PeekKind() != '}' {
+				name, err := dec.ReadToken()
+				if err != nil {
+					t.Fatalf("reading a key in %q: %v", ptr, err)
+				}
+				out[ptr] = append(out[ptr], name.String())
+				walk(ptr + "/" + name.String())
+			}
+			dec.ReadToken()
+		case '[':
+			for i := 0; dec.PeekKind() != ']'; i++ {
+				walk(fmt.Sprintf("%s/%d", ptr, i))
+			}
+			dec.ReadToken()
 		}
 	}
-	return keys
+	walk("")
+	return out
 }
 
 func TestEncode_KeyOrder(t *testing.T) {
+	// Known fields come first, in the JSON Canvas order; unknown fields follow
+	// them in the order they had in the file, at every level. They are spread
+	// between the known ones, and not in alphabetical order, to show that both
+	// are given up.
+	input := `{
+		"x-zeta": 1,
+		"edges": [{"x-zeta": 1, "label": "go", "id": "e1", "x-alpha": 2, "toNode": "n1",
+			"d-kind": "normal", "fromNode": "n1", "x-mu": 3}],
+		"d-version": "1.1",
+		"x-alpha": 2,
+		"nodes": [{
+			"x-zeta": 1, "d-role": "state", "text": "hi", "id": "n1", "x-alpha": 2,
+			"type": "text", "d-kind": "line", "x": 1, "y": 2, "width": 400, "height": 300,
+			"color": "3", "d-id": "X", "x-mu": 3,
+			"d-character": {"x-zeta": 1, "gender": "female", "x-alpha": 2, "name": "Abela", "x-mu": 3}
+		}],
+		"x-mu": 3
+	}`
+	c, err := decodeString(t, input)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	got := keyOrders(t, buf.Bytes())
+
+	unknown := []string{"x-zeta", "x-alpha", "x-mu"}
+	for ptr, known := range map[string][]string{
+		"":                     {"d-version", "nodes", "edges"},
+		"/nodes/0":             {"id", "type", "x", "y", "width", "height", "color", "text", "d-id", "d-kind", "d-role", "d-character"},
+		"/nodes/0/d-character": {"name", "gender"},
+		"/edges/0":             {"id", "fromNode", "toNode", "label", "d-kind"},
+	} {
+		want := strings.Join(append(known, unknown...), ",")
+		if got := strings.Join(got[ptr], ","); got != want {
+			t.Errorf("key order of %q = %v, want %v", ptr, got, want)
+		}
+	}
+}
+
+func TestEncode_KnownKeyOrder(t *testing.T) {
+	// A hand-built canvas, with no unknown fields, writes its known fields in
+	// the JSON Canvas order.
 	c := &Canvas{
 		Nodes: []*Node{{
 			ID: "n1", Type: "text", X: 1, Y: 2, Width: 400, Height: 300,
@@ -307,22 +376,15 @@ func TestEncode_KeyOrder(t *testing.T) {
 	if err := Encode(c, &buf); err != nil {
 		t.Fatalf("Encode: %v", err)
 	}
-	data := buf.Bytes()
-
-	top := objectKeysInOrder(t, data)
-	wantTop := []string{"d-version", "nodes", "edges"}
-	if strings.Join(top, ",") != strings.Join(wantTop, ",") {
-		t.Errorf("top-level key order = %v, want %v", top, wantTop)
-	}
-
-	// The node object is the first object inside the "nodes" array; find it by
-	// scanning past the top-level keys to the first nested '{'.
-	idx := bytes.IndexByte(data, '{')
-	nodeStart := bytes.IndexByte(data[idx+1:], '{')
-	nodeKeys := objectKeysInOrder(t, data[idx+1+nodeStart:])
-	wantNode := []string{"id", "type", "x", "y", "width", "height", "color", "text", "d-id", "d-kind", "d-role"}
-	if strings.Join(nodeKeys, ",") != strings.Join(wantNode, ",") {
-		t.Errorf("node key order = %v, want %v", nodeKeys, wantNode)
+	got := keyOrders(t, buf.Bytes())
+	for ptr, want := range map[string][]string{
+		"":         {"d-version", "nodes", "edges"},
+		"/nodes/0": {"id", "type", "x", "y", "width", "height", "color", "text", "d-id", "d-kind", "d-role"},
+		"/edges/0": {"id", "fromNode", "toNode", "label", "d-kind"},
+	} {
+		if strings.Join(got[ptr], ",") != strings.Join(want, ",") {
+			t.Errorf("key order of %q = %v, want %v", ptr, got[ptr], want)
+		}
 	}
 }
 
@@ -570,7 +632,10 @@ func TestRoundTrip_UnknownFieldStringsEqualInValue(t *testing.T) {
 		t.Fatalf("Decode: %v", err)
 	}
 	m := encodeToMap(t, c)
-	got := m["x-strings"].([]any)
+	got, ok := m["x-strings"].([]any)
+	if !ok {
+		t.Fatalf("x-strings = %v, want an array", m["x-strings"])
+	}
 	want := []any{"é\t\"\\/", "plain", "😀"}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("x-strings = %q, want %q", got, want)
@@ -602,7 +667,161 @@ func TestEncode_RejectsInvalidUTF8(t *testing.T) {
 	if err == nil {
 		t.Fatal("Encode of invalid UTF-8 text succeeded, want an error")
 	}
-	if !strings.Contains(err.Error(), `field "text"`) {
+	if !strings.Contains(err.Error(), `"/text"`) {
 		t.Errorf("error %q does not name the text field", err)
+	}
+}
+
+func TestEncode_TextNodeAlwaysWritesText(t *testing.T) {
+	// The schema requires text on a text node, so an empty one is still
+	// written, in its place among the known fields; other node types omit an
+	// empty text.
+	c := &Canvas{Nodes: []*Node{
+		{ID: "t", Type: "text", Color: "1", DomainID: "D"},
+		{ID: "f", Type: "file", Color: "1", DomainID: "D"},
+	}}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	got := keyOrders(t, buf.Bytes())
+	for ptr, want := range map[string]string{
+		"/nodes/0": "id,type,x,y,width,height,color,text,d-id",
+		"/nodes/1": "id,type,x,y,width,height,color,d-id",
+	} {
+		if strings.Join(got[ptr], ",") != want {
+			t.Errorf("keys of %q = %v, want %v", ptr, got[ptr], want)
+		}
+	}
+	if !strings.Contains(buf.String(), `"text": ""`) {
+		t.Errorf("text node lacks an empty text:\n%s", buf.String())
+	}
+}
+
+func TestSetExtra_TypedFieldWinsWhenOmitted(t *testing.T) {
+	// A key owned by a typed field is never written by an extension, even when
+	// the typed field itself is empty and so omitted: the typed field wins by
+	// being absent, and Encode reports no error.
+	c := &Canvas{
+		Nodes: []*Node{{ID: "n", Type: "file"}},
+		Edges: []*Edge{{ID: "e", FromNode: "n", ToNode: "n"}},
+	}
+	if err := c.Nodes[0].SetExtra("text", "extra"); err != nil {
+		t.Fatalf("Node.SetExtra: %v", err)
+	}
+	if err := c.Nodes[0].SetExtra("d-character", map[string]string{"name": "extra"}); err != nil {
+		t.Fatalf("Node.SetExtra: %v", err)
+	}
+	if err := c.Edges[0].SetExtra("label", "extra"); err != nil {
+		t.Fatalf("Edge.SetExtra: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	if strings.Contains(buf.String(), "extra") {
+		t.Errorf("an extension wrote a key owned by a typed field:\n%s", buf.String())
+	}
+	// Nor does the extension reach the typed field through a re-read.
+	c2, err := Decode(&buf)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if n, e := c2.Nodes[0], c2.Edges[0]; n.Text != "" || n.Character != nil || e.Label != "" {
+		t.Errorf("after a round-trip text = %q, d-character = %v, label = %q, want all empty", n.Text, n.Character, e.Label)
+	}
+}
+
+func TestSetExtra_TypedFieldWinsOnAlwaysWrittenField(t *testing.T) {
+	// x is always written by the node, and fromNode by the edge.
+	c := &Canvas{
+		Nodes: []*Node{{ID: "n", Type: "text", X: 7}},
+		Edges: []*Edge{{ID: "e", FromNode: "n", ToNode: "n"}},
+	}
+	if err := c.Nodes[0].SetExtra("x", 99); err != nil {
+		t.Fatalf("Node.SetExtra: %v", err)
+	}
+	if err := c.Edges[0].SetExtra("fromNode", "m"); err != nil {
+		t.Fatalf("Edge.SetExtra: %v", err)
+	}
+	m := encodeToMap(t, c)
+	if got := m["nodes"].([]any)[0].(map[string]any)["x"]; got != float64(7) {
+		t.Errorf("node x = %v, want 7", got)
+	}
+	if got := m["edges"].([]any)[0].(map[string]any)["fromNode"]; got != "n" {
+		t.Errorf("edge fromNode = %v, want \"n\"", got)
+	}
+}
+
+func TestSetExtra_ReplacesInPlace(t *testing.T) {
+	// Setting a key twice keeps one key, with the last value, in the place of
+	// the first; a decoded unknown field is replaced the same way.
+	c, err := decodeString(t, `{"d-version":"1.1","nodes":[{"id":"n","type":"text","text":"hi","x-b":1,"x-a":1}]}`)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	n := c.Nodes[0]
+	for _, set := range []struct {
+		key string
+		val int
+	}{{"x-c", 1}, {"x-b", 2}, {"x-c", 3}} {
+		if err := n.SetExtra(set.key, set.val); err != nil {
+			t.Fatalf("SetExtra(%q): %v", set.key, err)
+		}
+	}
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	keys := keyOrders(t, buf.Bytes())["/nodes/0"]
+	if got := strings.Join(keys, ","); got != "id,type,x,y,width,height,text,x-b,x-a,x-c" {
+		t.Errorf("node keys = %v", got)
+	}
+	node := encodeToMap(t, c)["nodes"].([]any)[0].(map[string]any)
+	if node["x-b"] != float64(2) || node["x-c"] != float64(3) {
+		t.Errorf("x-b = %v, x-c = %v, want 2 and 3", node["x-b"], node["x-c"])
+	}
+}
+
+func TestSetExtra_InvalidUTF8KeyIsAnError(t *testing.T) {
+	// Writing is strict: a key that is not valid UTF-8 is an error, never a
+	// field that silently goes missing.
+	n := &Node{ID: "n", Type: "text"}
+	e := &Edge{ID: "e", FromNode: "n", ToNode: "n"}
+	for name, set := range map[string]func(string, any) error{"node": n.SetExtra, "edge": e.SetExtra} {
+		err := set("x-a\xffb", 1)
+		if err == nil {
+			t.Errorf("%s: SetExtra with an invalid UTF-8 key returned nil", name)
+			continue
+		}
+		if !strings.HasPrefix(err.Error(), "dcanvas: field ") {
+			t.Errorf("%s: error %q does not name the field", name, err)
+		}
+	}
+	var buf bytes.Buffer
+	if err := Encode(&Canvas{Nodes: []*Node{n}, Edges: []*Edge{e}}, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	if strings.Contains(buf.String(), `"x-`) {
+		t.Errorf("a failed SetExtra left a key:\n%s", buf.String())
+	}
+}
+
+func TestTextNodeFields_TagsMatchNode(t *testing.T) {
+	// textNodeFields differs from Node only in that text is always written; the
+	// conversion between them checks names and types, this checks the tags.
+	node, text := reflect.TypeFor[Node](), reflect.TypeFor[textNodeFields]()
+	if node.NumField() != text.NumField() {
+		t.Fatalf("Node has %d fields, textNodeFields %d", node.NumField(), text.NumField())
+	}
+	for i := range node.NumField() {
+		nf, tf := node.Field(i), text.Field(i)
+		want := nf.Tag.Get("json")
+		if nf.Name == "Text" {
+			want = strings.TrimSuffix(want, ",omitempty")
+		}
+		if got := tf.Tag.Get("json"); got != want {
+			t.Errorf("textNodeFields.%s tag = %q, want %q", tf.Name, got, want)
+		}
 	}
 }

@@ -1,6 +1,6 @@
 ---
-adr-status: Accepted
-superseded-by:
+adr-status: Superseded
+superseded-by: "[[ADR-0018 - Unknown fields are kept by a json v2 embedded fallback over typed fields|ADR-0018]]"
 ---
 
 # Reference implementation uses a catch-all map over typed fields, not struct embedding

@@ -5,7 +5,11 @@
 
 package dcanvas
 
-import "testing"
+import (
+	"bytes"
+	"strings"
+	"testing"
+)
 
 // characterOf decodes a single-node canvas carrying the given d-character JSON
 // and returns the node's re-encoded d-character map, so assertions are on the
@@ -123,7 +127,7 @@ func TestCharacter_DecodesTextID(t *testing.T) {
 				"id": "n1", "type": "text",
 				"x": 0, "y": 0, "width": 400, "height": 300,
 				"text": "hi",
-				"d-character": {"name": "Abela", "textId": "#1001", "mood": "angry"}
+				"d-character": {"name": "Abela", "mood": "angry", "textId": "#1001"}
 			}
 		]
 	}`)
@@ -134,8 +138,15 @@ func TestCharacter_DecodesTextID(t *testing.T) {
 	if ch.TextID != "#1001" {
 		t.Errorf("Character.TextID = %q, want %q", ch.TextID, "#1001")
 	}
-	if _, ok := ch.extra["textId"]; ok {
-		t.Errorf("textId should be a typed field, not a preserved extra")
+	// A typed field is written among the known ones, before the unknown
+	// fields; an unknown textId would follow mood, as in the file.
+	var buf bytes.Buffer
+	if err := Encode(c, &buf); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	keys := keyOrders(t, buf.Bytes())["/nodes/0/d-character"]
+	if got := strings.Join(keys, ","); got != "name,textId,mood" {
+		t.Errorf("d-character keys = %v, want name,textId,mood: textId should be a typed field, not a preserved extra", got)
 	}
 }
 
